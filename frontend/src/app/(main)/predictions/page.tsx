@@ -1,15 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ArrowUp,
+  Clock3,
+  Eye,
   Info,
+  ListChecks,
   Loader2,
+  RotateCcw,
+  Save,
+  Search,
   Trophy,
 } from "lucide-react";
 import clsx from "clsx";
@@ -26,6 +34,15 @@ import {
   sortFixtures,
 } from "../../../lib/fixture-utils";
 import { getCountryName } from "../../../lib/i18n/countries";
+import { getTournamentIconUrl } from "../../../lib/tournament-icons";
+
+function normalizeSearch(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
 
 type PredictionFilter = "all" | "saved" | "pending" | "results";
 type ToastTone = "success" | "error";
@@ -64,6 +81,13 @@ const TONE_CLASS: Record<ReturnType<typeof getPredictionBadgeTone>, string> = {
   partial: "bg-[rgba(255,204,0,0.15)] border border-[rgba(255,204,0,0.5)] text-[#ffcc00]",
   miss: "bg-[rgba(213,2,4,0.15)] border border-[rgba(213,2,4,0.5)] text-[#ff4d4d]",
 };
+
+const DROPDOWN_MOTION = {
+  initial: { opacity: 0, y: -4, scale: 0.98 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -4, scale: 0.98 },
+  transition: { duration: 0.16, ease: "easeOut" },
+} as const;
 
 function isPredictionOpen(status: string): boolean {
   return status === "not_started" || status === "ns";
@@ -105,8 +129,17 @@ function hasChanged(row: MatchRow): boolean {
   return row.homePred !== row.originalHomePred || row.awayPred !== row.originalAwayPred;
 }
 
+function SectionIcon({ title }: { title: string }) {
+  if (title === "Predicciones hechas") return <CheckCircle2 className="h-4 w-4 text-primary" />;
+  if (title === "Predicciones pendientes") return <Clock3 className="h-4 w-4 text-primary" />;
+  if (title === "Resultados de predicciones") return <ListChecks className="h-4 w-4 text-primary" />;
+  return <Trophy className="h-4 w-4 text-primary" />;
+}
+
 export default function PredictionsPage() {
-  const activeTournamentId = useTournamentStore(s => s.activeTournamentId);
+  const { tournaments, activeTournamentId, setActiveTournament } = useTournamentStore();
+  const activeTournament = tournaments.find(t => t.id === activeTournamentId);
+  const tournamentIcon = getTournamentIconUrl(activeTournament?.leagueId);
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") as PredictionFilter | null;
 
@@ -121,6 +154,18 @@ export default function PredictionsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [dateOpen, setDateOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [showBackTop, setShowBackTop] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
+  const [tournamentOpen, setTournamentOpen] = useState(false);
+  const [filterSelectOpen, setFilterSelectOpen] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const dateRef = useRef<HTMLDivElement>(null);
+  const tournamentRef = useRef<HTMLDivElement>(null);
+  const filterSelectRef = useRef<HTMLDivElement>(null);
 
   const buildRows = useCallback((fixtures: Fixture[], predictions: Prediction[]): MatchRow[] => {
     const predMap = new Map(predictions.map(p => [p.fixtureId, p]));
@@ -133,7 +178,7 @@ export default function PredictionsPage() {
         fixture: f,
         fixtureId: f.id,
         time: date
-          ? date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })
+          ? date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })
           : "--:--",
         dateKey: date ? date.toISOString().slice(0, 10) : "Sin fecha",
         phase: formatFixturePhase(f),
@@ -152,6 +197,33 @@ export default function PredictionsPage() {
       setFilter(tabParam);
     }
   }, [tabParam]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dateRef.current && !dateRef.current.contains(event.target as Node)) { setDateOpen(false); setCalendarOpen(false); }
+      if (tournamentRef.current && !tournamentRef.current.contains(event.target as Node)) setTournamentOpen(false);
+      if (filterSelectRef.current && !filterSelectRef.current.contains(event.target as Node)) setFilterSelectOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    function handleScroll() {
+      setShowBackTop(window.scrollY > 260);
+    }
+    function handleResize() {
+      setIsMobile(window.innerWidth < 768);
+    }
+    handleScroll();
+    handleResize();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -192,10 +264,30 @@ export default function PredictionsPage() {
     return matches.filter(m => m.dateKey === selectedDate);
   }, [matches, selectedDate]);
 
+  const normalizedSearchQuery = useMemo(() => normalizeSearch(searchQuery), [searchQuery]);
+
+  const searchedMatches = useMemo(() => {
+    if (!normalizedSearchQuery) return dateFilteredMatches;
+    return dateFilteredMatches.filter(m => {
+      const searchable = [
+        getCountryName(m.fixture.homeTeam?.name),
+        getCountryName(m.fixture.awayTeam?.name),
+        m.fixture.homeTeam?.name,
+        m.fixture.awayTeam?.name,
+        m.phase,
+        m.fixture.round,
+        m.fixture.groupLabel,
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return normalizeSearch(searchable).includes(normalizedSearchQuery);
+    });
+  }, [dateFilteredMatches, normalizedSearchQuery]);
+
   const sectionRows = useMemo(() => {
-    const saved = dateFilteredMatches.filter(m => !m.locked && m.hasSavedPrediction);
-    const pending = dateFilteredMatches.filter(m => !m.locked && !m.hasSavedPrediction);
-    const results = dateFilteredMatches.filter(m => m.locked && m.hasSavedPrediction);
+    const saved = searchedMatches.filter(m => !m.locked && m.hasSavedPrediction);
+    const pending = searchedMatches.filter(m => !m.locked && !m.hasSavedPrediction);
+    const results = searchedMatches.filter(m => m.locked && m.hasSavedPrediction);
 
     if (filter === "saved") return [{ title: "Predicciones hechas", rows: saved }];
     if (filter === "pending") return [{ title: "Predicciones pendientes", rows: pending }];
@@ -206,7 +298,7 @@ export default function PredictionsPage() {
       { title: "Predicciones pendientes", rows: pending },
       { title: "Resultados de predicciones", rows: results },
     ];
-  }, [dateFilteredMatches, filter]);
+  }, [searchedMatches, filter]);
 
   const validDirtyRows = matches.filter(m =>
     !m.locked &&
@@ -224,6 +316,28 @@ export default function PredictionsPage() {
   const savedCount = matches.filter(m => m.hasSavedPrediction).length;
   const pendingCount = matches.filter(m => !m.locked && !m.hasSavedPrediction).length;
   const canSave = validDirtyRows.length > 0 && !saving;
+  const hasDirtyRows = matches.some(m => !m.locked && hasChanged(m));
+
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasDirtyRows) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasDirtyRows]);
+
+  const handleDiscard = () => {
+    setMatches(prev =>
+      prev.map(m => ({
+        ...m,
+        homePred: m.originalHomePred,
+        awayPred: m.originalAwayPred,
+      }))
+    );
+  };
 
   const updatePred = (fixtureId: number, team: "home" | "away", val: number | null) => {
     setMatches(prev =>
@@ -432,7 +546,8 @@ export default function PredictionsPage() {
 
         {/* Top bar: filter tabs + counter */}
         <div className="flex justify-between items-end border-b border-white/10 max-[760px]:flex-col max-[760px]:items-stretch max-[760px]:gap-2">
-          <div className="flex gap-2 flex-wrap">
+          {/* Desktop tabs */}
+          <div className="hidden md:flex gap-2 flex-wrap">
             {FILTERS.map(item => (
               <button
                 key={item.id}
@@ -450,29 +565,122 @@ export default function PredictionsPage() {
             ))}
           </div>
 
-          <div className="flex flex-col items-end pb-3 text-[0.75rem] text-white/60 leading-[1.4] whitespace-nowrap max-[760px]:items-start">
+          {/* Mobile filter select */}
+          <div className="md:hidden relative w-full" ref={filterSelectRef}>
+            <button
+              type="button"
+              className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 bg-white/[0.05] border rounded-lg text-white text-[0.85rem] font-medium cursor-pointer transition-colors duration-150 ${filter !== "all" ? "border-primary/40 bg-primary/[0.06]" : "border-white/[0.1]"}`}
+              onClick={() => setFilterSelectOpen(v => !v)}
+            >
+              <span className="flex-1 text-left">{FILTERS.find(f => f.id === filter)?.label ?? "Todas"}</span>
+              <ChevronDown className="w-4 h-4 text-white/50 shrink-0" />
+            </button>
+            <AnimatePresence>
+              {filterSelectOpen && (
+                <motion.div {...DROPDOWN_MOTION} className="absolute top-[calc(100%+6px)] left-0 w-full bg-[#141414] border border-white/[0.12] rounded-xl p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col gap-0.5">
+                  {FILTERS.map(item => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`w-full flex items-center gap-2.5 text-left px-3 py-[9px] border-none rounded-lg bg-transparent text-[0.85rem] font-medium cursor-pointer transition-all duration-150 ${filter === item.id ? "bg-primary/[0.12] text-primary" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}
+                      onClick={() => { setFilter(item.id); setFilterSelectOpen(false); }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="flex flex-col items-end pb-3 text-[0.75rem] text-white/60 leading-[1.4] whitespace-nowrap max-[760px]:items-start max-[760px]:w-full">
             <span>Predicciones guardadas</span>
             <span className="text-primary font-extrabold">{savedCount}/{matches.length} partidos</span>
           </div>
         </div>
 
+        {/* Competition select + search */}
+        <div className="flex flex-wrap items-center gap-2 pb-2 max-md:flex-col max-md:items-stretch">
+          <div className="relative flex-shrink-0 max-md:w-full" ref={tournamentRef}>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 px-4 py-2.5 bg-white/[0.05] border border-white/[0.1] rounded-lg text-white text-[0.85rem] font-medium cursor-pointer"
+              onClick={() => setTournamentOpen(v => !v)}
+            >
+              {tournamentIcon ? <img src={tournamentIcon} alt="" className="w-5 h-5 object-contain" /> : <Trophy className="w-4 h-4 text-white/50" />}
+              <span className="flex-1 text-left">{activeTournament?.shortName ?? activeTournament?.name ?? "Torneo"}</span>
+              <ChevronDown className="w-4 h-4 text-white/50 shrink-0" />
+            </button>
+            <AnimatePresence>
+              {tournamentOpen && (
+                <motion.div {...DROPDOWN_MOTION} className="absolute top-[calc(100%+6px)] left-0 min-w-[200px] bg-[#141414] border border-white/[0.12] rounded-xl p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col gap-0.5">
+                  {tournaments.map(t => {
+                    const icon = getTournamentIconUrl(t.leagueId);
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`w-full flex items-center gap-2.5 text-left px-3 py-[9px] border-none rounded-lg bg-transparent text-[0.85rem] font-medium cursor-pointer transition-all duration-150 ${t.id === activeTournamentId ? "bg-primary/[0.12] text-primary" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}
+                        onClick={() => { setActiveTournament(t.id); setTournamentOpen(false); }}
+                      >
+                        {icon ? <img src={icon} alt="" className="w-[18px] h-[18px] object-contain flex-shrink-0" /> : <Trophy className="w-[18px] h-[18px] text-primary flex-shrink-0" />}
+                        {t.name}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <label className="flex items-center gap-3 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-3 text-white transition-colors duration-200 focus-within:border-primary/40 focus-within:bg-white/[0.06] flex-1 min-w-0 max-md:w-full">
+            <Search className="w-4 h-4 shrink-0 text-white/45" />
+            <input
+              value={searchQuery}
+              onChange={event => setSearchQuery(event.target.value)}
+              placeholder={isMobile ? "Buscar partidos, equipos..." : 'Buscar partidos, equipos, fases... (Por ejemplo "Argentina", "Semifinales")'}
+              className="min-w-0 flex-1 bg-transparent text-[0.9rem] font-semibold text-white outline-none placeholder:text-white/35"
+              type="search"
+            />
+          </label>
+        </div>
+
         {/* Filter row: date select + nav + save */}
         <div className="flex justify-between items-center gap-4 max-[1100px]:flex-col max-[1100px]:items-stretch">
-          <label className="flex items-center gap-2 px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.14] rounded-lg text-white text-[0.85rem] font-semibold min-w-[210px] max-[1100px]:w-full">
-            <CalendarDays className="w-4 h-4 text-white/55 shrink-0" />
-            <select
-              className="flex-1 min-w-0 bg-transparent border-0 text-white outline-none font-[inherit] cursor-pointer"
-              value={selectedDate}
-              onChange={event => setSelectedDate(event.target.value)}
+          <div className="relative flex-shrink-0 max-[1100px]:w-full" ref={dateRef}>
+            <button
+              type="button"
+              className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 bg-white/[0.05] border rounded-lg text-white text-[0.85rem] font-medium cursor-pointer transition-colors duration-150 ${selectedDate !== "all" ? "border-primary/40 bg-primary/[0.06]" : "border-white/[0.1]"}`}
+              onClick={() => setDateOpen(v => !v)}
             >
-              <option value="all">Todas las fechas</option>
-              {dateOptions.map(dateKey => (
-                <option key={dateKey} value={dateKey}>
-                  {formatDateLabel(dateKey)}
-                </option>
-              ))}
-            </select>
-          </label>
+              <CalendarDays className="w-4 h-4 text-white/50 shrink-0" />
+              <span className="flex-1 text-left">{selectedDate === "all" ? "Todas las fechas" : formatDateLabel(selectedDate)}</span>
+              <ChevronDown className="w-4 h-4 text-white/50 shrink-0" />
+            </button>
+            <AnimatePresence>
+              {dateOpen && (
+                <motion.div {...DROPDOWN_MOTION} className="absolute top-[calc(100%+6px)] left-0 min-w-[210px] bg-[#141414] border border-white/[0.12] rounded-xl p-1.5 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50 flex flex-col gap-0.5 max-h-[300px] overflow-y-auto">
+                  <button
+                    type="button"
+                    className={`w-full flex items-center gap-2.5 text-left px-3 py-[9px] border-none rounded-lg bg-transparent text-[0.85rem] font-medium cursor-pointer transition-all duration-150 ${selectedDate === "all" ? "bg-primary/[0.12] text-primary" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}
+                    onClick={() => { setSelectedDate("all"); setDateOpen(false); }}
+                  >
+                    Todas las fechas
+                  </button>
+                  {dateOptions.map(key => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`w-full flex items-center gap-2.5 text-left px-3 py-[9px] border-none rounded-lg bg-transparent text-[0.85rem] font-medium cursor-pointer transition-all duration-150 ${key === selectedDate ? "bg-primary/[0.12] text-primary" : "text-white/70 hover:bg-white/[0.06] hover:text-white"}`}
+                      onClick={() => { setSelectedDate(key); setDateOpen(false); }}
+                    >
+                      {formatDateLabel(key)}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <div className="flex items-center gap-3 max-[1100px]:w-full max-[1100px]:justify-between">
             <button
@@ -484,9 +692,65 @@ export default function PredictionsPage() {
             >
               <ChevronLeft className="w-[18px] h-[18px]" />
             </button>
-            <div className="flex items-center gap-2 min-w-[210px] justify-center px-[18px] py-2 bg-primary/[0.06] border border-primary/[0.28] rounded-[20px] text-primary text-[0.86rem] font-extrabold max-[1100px]:flex-1 max-[1100px]:min-w-0">
-              <CalendarDays className="w-[18px] h-[18px]" />
-              {selectedDate === "all" ? "Todas las fechas" : formatDateLabel(selectedDate)}
+            <div className="relative max-[1100px]:flex-1">
+              <button
+                type="button"
+                className="flex items-center gap-2 min-w-[210px] justify-center px-[18px] py-2 bg-primary/[0.06] border border-primary/[0.28] rounded-[20px] text-primary text-[0.86rem] font-extrabold cursor-pointer hover:bg-primary/[0.1] transition-colors duration-200 max-[1100px]:w-full max-[1100px]:min-w-0"
+                onClick={() => setCalendarOpen(v => !v)}
+              >
+                <CalendarDays className="w-[18px] h-[18px]" />
+                {selectedDate === "all" ? "Todas las fechas" : formatDateLabel(selectedDate)}
+              </button>
+              <AnimatePresence>
+                {calendarOpen && (
+                  <motion.div {...DROPDOWN_MOTION} className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 min-w-[260px] bg-[#141414] border border-white/[0.12] rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <button type="button" className="bg-transparent border-none text-white/60 cursor-pointer p-1 rounded hover:text-white" onClick={() => {
+                        if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
+                        else { setCalendarMonth(m => m - 1); }
+                      }}>
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-[0.85rem] font-extrabold text-white">
+                        {new Date(calendarYear, calendarMonth).toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
+                      </span>
+                      <button type="button" className="bg-transparent border-none text-white/60 cursor-pointer p-1 rounded hover:text-white" onClick={() => {
+                        if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
+                        else { setCalendarMonth(m => m + 1); }
+                      }}>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-0.5 text-center">
+                      {["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"].map(d => (
+                        <div key={d} className="text-[0.6rem] font-extrabold text-white/40 py-1">{d}</div>
+                      ))}
+                      {Array.from({ length: new Date(calendarYear, calendarMonth, 1).getDay() }).map((_, i) => (
+                        <div key={`empty-${i}`} />
+                      ))}
+                      {Array.from({ length: new Date(calendarYear, calendarMonth + 1, 0).getDate() }).map((_, i) => {
+                        const day = i + 1;
+                        const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                        const isToday = dateStr === new Date().toISOString().slice(0, 10);
+                        const hasMatch = dateOptions.includes(dateStr);
+                        const isSelected = selectedDate === dateStr;
+                        return (
+                          <button
+                            key={day}
+                            type="button"
+                            disabled={!hasMatch}
+                            className={`text-[0.78rem] font-bold rounded-lg py-1.5 transition-colors duration-150 cursor-pointer
+                              ${isSelected ? "bg-primary text-black" : isToday ? "bg-primary/[0.15] text-primary" : hasMatch ? "text-white/80 hover:bg-white/[0.06]" : "text-white/20 cursor-not-allowed"}`}
+                            onClick={() => { setSelectedDate(dateStr); setCalendarOpen(false); }}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
             <button
               type="button"
@@ -499,20 +763,33 @@ export default function PredictionsPage() {
             </button>
           </div>
 
-          <button
-            className="flex items-center justify-center gap-2 min-w-[190px] px-5 py-3 bg-primary border-none rounded-lg text-black text-[0.9rem] font-extrabold cursor-pointer transition-[opacity,transform] duration-200 disabled:opacity-[0.42] disabled:cursor-not-allowed hover:not-disabled:opacity-[0.92] hover:not-disabled:-translate-y-px max-[1100px]:w-full"
-            onClick={handleSave}
-            disabled={!canSave}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 spin-animation" />
-                Guardando
-              </>
-            ) : (
-              "Guardar predicciones"
-            )}
-          </button>
+          <div className="flex items-center gap-2 max-[1100px]:w-full">
+            <button
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-transparent border border-white/20 rounded-lg text-white/75 text-[0.85rem] font-extrabold cursor-pointer transition-all duration-200 disabled:opacity-[0.35] disabled:cursor-not-allowed hover:not-disabled:bg-white/[0.06] hover:not-disabled:text-white max-[1100px]:flex-1"
+              onClick={handleDiscard}
+              disabled={!hasDirtyRows || saving}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Descartar
+            </button>
+            <button
+              className="flex items-center justify-center gap-2 min-w-[190px] px-5 py-3 bg-primary border-none rounded-lg text-black text-[0.9rem] font-extrabold cursor-pointer transition-[opacity,transform] duration-200 disabled:opacity-[0.42] disabled:cursor-not-allowed hover:not-disabled:opacity-[0.92] hover:not-disabled:-translate-y-px max-[1100px]:flex-1"
+              onClick={handleSave}
+              disabled={!canSave}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 spin-animation" />
+                  Guardando
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  Guardar predicciones
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         {hasInvalidDirtyRow && (
@@ -524,28 +801,30 @@ export default function PredictionsPage() {
 
         {/* Summary row */}
         <div className="grid grid-cols-3 gap-3 max-[760px]:grid-cols-1">
-          <div className="flex items-baseline gap-2 px-3.5 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg">
-            <span className="font-display text-[1.35rem] font-black text-white">{validDirtyRows.length}</span>
-            <span className="text-white/55 text-[0.78rem] font-bold">cambios listos</span>
+          <div className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg">
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-[1.35rem] font-black text-white">{validDirtyRows.length}</span>
+              <span className="text-white text-[0.82rem] font-extrabold">cambios listos</span>
+            </div>
+            <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Hacé click en "Guardar predicciones" para aplicar cambios.</span>
           </div>
-          <div className="flex items-baseline gap-2 px-3.5 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg">
-            <span className="font-display text-[1.35rem] font-black text-white">{pendingCount}</span>
-            <span className="text-white/55 text-[0.78rem] font-bold">pendientes</span>
+          <div className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg">
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-[1.35rem] font-black text-white">{pendingCount}</span>
+              <span className="text-white text-[0.82rem] font-extrabold">pendientes</span>
+            </div>
+            <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Partidos pendientes de predicción.</span>
           </div>
-          <div className="flex items-baseline gap-2 px-3.5 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg">
-            <span className="font-display text-[1.35rem] font-black text-white">{dateFilteredMatches.length}</span>
-            <span className="text-white/55 text-[0.78rem] font-bold">en vista</span>
+          <div className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg">
+            <div className="flex items-baseline gap-2">
+              <span className="font-display text-[1.35rem] font-black text-white">{searchedMatches.length}</span>
+              <span className="text-white text-[0.82rem] font-extrabold">en vista</span>
+            </div>
+            <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Partidos mostrándose en pantalla.</span>
           </div>
         </div>
 
         <div>
-          {/* Table columns header */}
-          <div className="grid [grid-template-columns:100px_minmax(0,1fr)_150px] gap-4 px-4 pb-2 text-[0.7rem] font-extrabold text-white/[0.42] uppercase max-[760px]:hidden">
-            <div>FECHA</div>
-            <div className="text-center">PARTIDO Y PREDICCIÓN</div>
-            <div className="text-center">ESTADO</div>
-          </div>
-
           {loading ? (
             <div className="py-8 text-center text-white/55">Cargando predicciones...</div>
           ) : matches.length === 0 ? (
@@ -568,17 +847,27 @@ export default function PredictionsPage() {
         </div>
 
         {/* Footer area */}
-        <div className="flex justify-between items-center gap-4 mt-2 max-[1100px]:flex-col max-[1100px]:items-stretch">
-          <div className="flex items-center gap-3 bg-primary/[0.05] border border-primary/[0.2] rounded-lg px-4 py-3 text-white/82 text-[0.85rem] font-semibold">
-            <Info className="text-primary w-[18px] h-[18px] shrink-0" />
-            Podés editar tus predicciones hasta el inicio de cada partido.
-          </div>
-
-          <button className="flex items-center gap-2 px-4 py-2.5 bg-transparent border border-white/20 rounded-lg text-white text-[0.85rem] font-bold cursor-pointer transition-colors duration-200 hover:bg-white/[0.05]">
-            <Trophy className="w-4 h-4 text-white/55" />
-            Predicciones del torneo
-          </button>
+        <div className="flex items-center gap-3 bg-primary/[0.05] border border-primary/[0.2] rounded-lg px-4 py-3 text-white/82 text-[0.85rem] font-semibold">
+          <Info className="text-primary w-[18px] h-[18px] shrink-0" />
+          Podés editar tus predicciones hasta el inicio de cada partido.
         </div>
+
+        <AnimatePresence>
+          {showBackTop && (
+            <motion.button
+              type="button"
+              aria-label="Volver arriba"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="fixed right-5 bottom-6 z-[90] flex h-11 w-11 items-center justify-center rounded-full bg-primary text-black shadow-[0_14px_40px_rgba(0,0,0,0.45)] cursor-pointer transition-all duration-200 hover:brightness-75 active:scale-90"
+              initial={{ opacity: 0, y: -8, scale: 0.92 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.92 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              <ArrowUp className="h-5 w-5" />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </main>
     </>
   );
