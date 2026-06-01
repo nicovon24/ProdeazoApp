@@ -67,6 +67,7 @@ const PRED_BADGE_CLASS: Record<ReturnType<typeof getPredictionBadgeTone>, string
 
 const ROUNDS_PER_PAGE = 5;
 const WORLD_CUP_START = new Date('2026-06-11T00:00:00-03:00').getTime();
+const FIXTURE_TIME_ZONE = 'America/Argentina/Buenos_Aires';
 const DROPDOWN_MOTION = {
   initial: { opacity: 0, y: -4, scale: 0.98 },
   animate: { opacity: 1, y: 0, scale: 1 },
@@ -101,6 +102,74 @@ function normalizeSearch(value: string): string {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+}
+
+function fixtureTimestamp(fixture: Fixture): number {
+  if (!fixture.date) return Number.MAX_SAFE_INTEGER;
+  const time = new Date(fixture.date).getTime();
+  return Number.isNaN(time) ? Number.MAX_SAFE_INTEGER : time;
+}
+
+function fixtureDateKey(date?: string | null): string {
+  if (!date) return 'Sin fecha';
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return 'Sin fecha';
+
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: FIXTURE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(parsed);
+
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  const day = parts.find(part => part.type === 'day')?.value;
+
+  if (!year || !month || !day) return 'Sin fecha';
+  return `${year}-${month}-${day}`;
+}
+
+function formatFixtureTime(date?: string | null): string {
+  if (!date) return '--:--';
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return '--:--';
+  return parsed.toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: FIXTURE_TIME_ZONE,
+  });
+}
+
+function formatDateLabel(dateStr: string): string {
+  if (dateStr === 'Sin fecha') return dateStr;
+  try {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    if (!year || !month || !day) return dateStr;
+    return capitalizeFirst(new Date(year, month - 1, day, 12).toLocaleDateString('es-AR', {
+      weekday: 'long', day: 'numeric', month: 'long',
+    }));
+  } catch {
+    return dateStr;
+  }
+}
+
+function statusRankWithinDate(fixture: Fixture, mode: FixtureSortMode): number {
+  if (mode !== 'recommended') return 0;
+  if (fixture.status === 'in_progress' || fixture.status === 'inprogress') return 0;
+  if (fixture.status === 'not_started' || fixture.status === 'ns') return 1;
+  if (fixture.status === 'postponed' || fixture.status === 'cancelled') return 2;
+  if (fixture.status === 'finished' || fixture.status === 'ft') return 3;
+  return 2;
+}
+
+function sortFixturesWithinDate(fixtures: Fixture[], mode: FixtureSortMode): Fixture[] {
+  return [...fixtures].sort((a, b) => {
+    const statusDiff = statusRankWithinDate(a, mode) - statusRankWithinDate(b, mode);
+    if (statusDiff !== 0) return statusDiff;
+    return fixtureTimestamp(a) - fixtureTimestamp(b);
+  });
 }
 
 export default function FixturePage() {
@@ -256,16 +325,8 @@ export default function FixturePage() {
   const filtered = filteredBySelects.filter(f => {
     if (!normalizedSearchQuery) return true;
 
-    const dateLabel = f.date
-      ? capitalizeFirst(new Date(f.date.slice(0, 10)).toLocaleDateString('es-AR', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-        }))
-      : '';
-    const timeLabel = f.date
-      ? new Date(f.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })
-      : '';
+    const dateLabel = f.date ? formatDateLabel(fixtureDateKey(f.date)) : '';
+    const timeLabel = formatFixtureTime(f.date);
     const statusLabel =
       f.status === 'in_progress' || f.status === 'inprogress'
         ? STATUS_LABELS.in_progress
@@ -296,30 +357,15 @@ export default function FixturePage() {
   const sorted = sortFixtures(filtered, sortMode);
 
   const grouped = sorted.reduce<Record<string, Fixture[]>>((acc, f) => {
-    const dateKey = f.date ? f.date.slice(0, 10) : 'Sin fecha';
+    const dateKey = fixtureDateKey(f.date);
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(f);
     return acc;
   }, {});
 
   for (const key of Object.keys(grouped)) {
-    grouped[key].sort((a, b) => {
-      if (!a.date) return -1;
-      if (!b.date) return 1;
-      return a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
-    });
+    grouped[key] = sortFixturesWithinDate(grouped[key], sortMode);
   }
-
-  const formatDateLabel = (dateStr: string) => {
-    if (dateStr === 'Sin fecha') return dateStr;
-    try {
-      return capitalizeFirst(new Date(dateStr).toLocaleDateString('es-AR', {
-        weekday: 'long', day: 'numeric', month: 'long',
-      }));
-    } catch {
-      return dateStr;
-    }
-  };
 
   function scrollToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -553,9 +599,7 @@ export default function FixturePage() {
                     <motion.div key={f.id} variants={fadeInUp} className="flex flex-col gap-3 p-3 bg-gradient-to-br from-white/[0.04] to-white/[0.01] rounded-lg mb-1 border border-white/[0.06] transition-all duration-200 hover:bg-white/[0.05] hover:border-white/[0.12] sm:grid sm:[grid-template-columns:100px_minmax(0,1fr)_92px_92px] sm:gap-4 sm:p-4">
                       <div className="flex flex-col gap-1 max-md:items-center max-md:text-center">
                         <span className="text-[1.05rem] font-bold text-white">
-                          {f.date
-                            ? new Date(f.date).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })
-                            : '--:--'}
+                          {formatFixtureTime(f.date)}
                         </span>
                         <span className="text-[0.7rem] text-white/60 leading-[1.3] font-bold">{formatFixturePhase(f)}</span>
                       </div>
