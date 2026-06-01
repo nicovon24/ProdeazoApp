@@ -116,6 +116,12 @@ function isLive(status: string): boolean {
 function formatDateLabel(dateStr: string) {
   if (dateStr === "Sin fecha") return dateStr;
   try {
+    const today = new Date().toISOString().slice(0, 10);
+    if (dateStr === today) return "Hoy";
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (dateStr === yesterday) return "Ayer";
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    if (dateStr === tomorrow) return "Mañana";
     return capitalizeFirst(new Date(`${dateStr}T00:00:00`).toLocaleDateString("es-AR", {
       weekday: "long",
       day: "numeric",
@@ -142,10 +148,10 @@ function hasChanged(row: MatchRow): boolean {
 }
 
 function SectionIcon({ title }: { title: string }) {
-  if (title === "Predicciones hechas") return <CheckCircle2 className="h-4 w-4 text-primary" />;
-  if (title === "Predicciones pendientes") return <Clock3 className="h-4 w-4 text-primary" />;
-  if (title === "Resultados de predicciones") return <ListChecks className="h-4 w-4 text-primary" />;
-  return <Trophy className="h-4 w-4 text-primary" />;
+  if (title === "Predicciones hechas") return <CheckCircle2 className="h-5 w-5 text-primary -ml-1" />;
+  if (title === "Predicciones pendientes") return <Clock3 className="h-5 w-5 text-primary -ml-1" />;
+  if (title === "Resultados de predicciones") return <ListChecks className="h-5 w-5 text-primary -ml-1" />;
+  return <Trophy className="h-5 w-5 text-primary -ml-1" />;
 }
 
 export default function PredictionsPage() {
@@ -709,7 +715,7 @@ export default function PredictionsPage() {
             <div className="relative max-[1100px]:flex-1" ref={calendarRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 w-[210px] justify-center px-[18px] py-2 bg-primary/[0.06] border border-primary/[0.28] rounded-[20px] text-primary text-[0.86rem] font-extrabold cursor-pointer hover:bg-primary/[0.1] transition-colors duration-200 max-[1100px]:w-full"
+                className="flex items-center gap-2 w-[240px] justify-center px-[18px] py-2 bg-primary/[0.06] border border-primary/[0.28] rounded-[20px] text-primary text-[0.86rem] font-extrabold cursor-pointer hover:bg-primary/[0.1] transition-colors duration-200 max-[1100px]:w-full"
                 onClick={() => setCalendarOpen(v => !v)}
               >
                 <CalendarDays className="w-[18px] h-[18px]" />
@@ -717,7 +723,7 @@ export default function PredictionsPage() {
               </button>
               <AnimatePresence>
                 {calendarOpen && (
-                  <motion.div {...DROPDOWN_MOTION} className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 min-w-[260px] bg-[#141414] border border-white/[0.12] rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50">
+                  <motion.div {...DROPDOWN_MOTION} onMouseDown={e => e.stopPropagation()} className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 min-w-[260px] bg-[#141414] border border-white/[0.12] rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50">
                     <div className="flex items-center justify-between mb-2">
                       <button type="button" className="bg-transparent border-none text-white/60 cursor-pointer p-1 rounded hover:text-white" onClick={e => {
                         e.stopPropagation();
@@ -892,10 +898,12 @@ export default function PredictionsPage() {
         </div>
 
         {/* Footer area */}
-        <div className="flex items-center gap-3 bg-primary/[0.05] border border-primary/[0.2] rounded-lg px-4 py-3 text-white/82 text-[0.85rem] font-semibold">
-          <Info className="text-primary w-[18px] h-[18px] shrink-0" />
-          Podés editar tus predicciones hasta el inicio de cada partido.
-        </div>
+        {filter !== "results" && (
+          <div className="flex items-center gap-3 bg-primary/[0.05] border border-primary/[0.2] rounded-lg px-4 py-3 text-white/82 text-[0.85rem] font-semibold">
+            <Info className="text-primary w-[18px] h-[18px] shrink-0" />
+            Podés editar tus predicciones hasta el inicio de cada partido.
+          </div>
+        )}
 
         <AnimatePresence>
           {showBackTop && (
