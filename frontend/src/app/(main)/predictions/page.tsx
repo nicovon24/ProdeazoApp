@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertCircle,
+  ArrowUpRight,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
@@ -35,6 +36,17 @@ import {
 } from "../../../lib/fixture-utils";
 import { getCountryName } from "../../../lib/i18n/countries";
 import { getTournamentIconUrl } from "../../../lib/tournament-icons";
+
+function capitalizeFirst(value: string): string {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function getTournamentDisplayName(name?: string | null): string {
+  if (!name) return "Torneo";
+  if (/^(wc|fifa wc)\s*2026$/i.test(name.trim())) return "World Cup 2026";
+  return name;
+}
 
 function normalizeSearch(value: string): string {
   return value
@@ -104,11 +116,11 @@ function isLive(status: string): boolean {
 function formatDateLabel(dateStr: string) {
   if (dateStr === "Sin fecha") return dateStr;
   try {
-    return new Date(`${dateStr}T00:00:00`).toLocaleDateString("es-AR", {
+    return capitalizeFirst(new Date(`${dateStr}T00:00:00`).toLocaleDateString("es-AR", {
       weekday: "long",
       day: "numeric",
       month: "long",
-    });
+    }));
   } catch {
     return dateStr;
   }
@@ -164,6 +176,7 @@ export default function PredictionsPage() {
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const dateRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   const tournamentRef = useRef<HTMLDivElement>(null);
   const filterSelectRef = useRef<HTMLDivElement>(null);
 
@@ -200,7 +213,8 @@ export default function PredictionsPage() {
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dateRef.current && !dateRef.current.contains(event.target as Node)) { setDateOpen(false); setCalendarOpen(false); }
+      if (dateRef.current && !dateRef.current.contains(event.target as Node)) setDateOpen(false);
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) setCalendarOpen(false);
       if (tournamentRef.current && !tournamentRef.current.contains(event.target as Node)) setTournamentOpen(false);
       if (filterSelectRef.current && !filterSelectRef.current.contains(event.target as Node)) setFilterSelectOpen(false);
     }
@@ -313,8 +327,9 @@ export default function PredictionsPage() {
     (m.homePred === null || m.awayPred === null)
   );
 
-  const savedCount = matches.filter(m => m.hasSavedPrediction).length;
+  const savedCount = matches.filter(m => m.hasSavedPrediction && !m.locked).length;
   const pendingCount = matches.filter(m => !m.locked && !m.hasSavedPrediction).length;
+  const resultsCount = matches.filter(m => m.locked && m.hasSavedPrediction).length;
   const canSave = validDirtyRows.length > 0 && !saving;
   const hasDirtyRows = matches.some(m => !m.locked && hasChanged(m));
 
@@ -394,7 +409,7 @@ export default function PredictionsPage() {
   const moveDate = (direction: -1 | 1) => {
     if (dateOptions.length === 0) return;
     if (selectedDate === "all") {
-      setSelectedDate(direction > 0 ? dateOptions[0] : dateOptions[dateOptions.length - 1]);
+      setSelectedDate(dateOptions[0]);
       return;
     }
 
@@ -438,9 +453,8 @@ export default function PredictionsPage() {
     <div
       key={row.fixtureId}
       className={clsx(
-        "grid gap-4 items-center min-h-[92px] px-4 py-3.5 bg-white/[0.025] border border-transparent rounded-lg mb-1 transition-[background-color,border-color] duration-200 hover:bg-white/[0.055]",
+        "grid gap-4 items-center min-h-[92px] px-4 py-3.5 bg-gradient-to-br from-white/[0.04] to-white/[0.01] border border-white/[0.06] rounded-lg mb-1 transition-all duration-200 hover:bg-white/[0.05] hover:border-white/[0.12]",
         "[grid-template-columns:100px_minmax(0,1fr)_150px]",
-        row.locked && "border-white/[0.04]",
         // Mobile: stack
         "max-[760px]:grid-cols-1 max-[760px]:gap-3"
       )}
@@ -608,7 +622,7 @@ export default function PredictionsPage() {
               onClick={() => setTournamentOpen(v => !v)}
             >
               {tournamentIcon ? <img src={tournamentIcon} alt="" className="w-5 h-5 object-contain" /> : <Trophy className="w-4 h-4 text-white/50" />}
-              <span className="flex-1 text-left">{activeTournament?.shortName ?? activeTournament?.name ?? "Torneo"}</span>
+              <span className="flex-1 text-left">{getTournamentDisplayName(activeTournament?.shortName ?? activeTournament?.name)}</span>
               <ChevronDown className="w-4 h-4 text-white/50 shrink-0" />
             </button>
             <AnimatePresence>
@@ -650,7 +664,7 @@ export default function PredictionsPage() {
           <div className="relative flex-shrink-0 max-[1100px]:w-full" ref={dateRef}>
             <button
               type="button"
-              className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 bg-white/[0.05] border rounded-lg text-white text-[0.85rem] font-medium cursor-pointer transition-colors duration-150 ${selectedDate !== "all" ? "border-primary/40 bg-primary/[0.06]" : "border-white/[0.1]"}`}
+              className={`flex w-[220px] items-center justify-between gap-2 px-4 py-2.5 bg-white/[0.05] border rounded-lg text-white text-[0.85rem] font-medium cursor-pointer transition-colors duration-150 max-[1100px]:w-full ${selectedDate !== "all" ? "border-primary/40 bg-primary/[0.06]" : "border-white/[0.1]"}`}
               onClick={() => setDateOpen(v => !v)}
             >
               <CalendarDays className="w-4 h-4 text-white/50 shrink-0" />
@@ -692,10 +706,10 @@ export default function PredictionsPage() {
             >
               <ChevronLeft className="w-[18px] h-[18px]" />
             </button>
-            <div className="relative max-[1100px]:flex-1">
+            <div className="relative max-[1100px]:flex-1" ref={calendarRef}>
               <button
                 type="button"
-                className="flex items-center gap-2 min-w-[210px] justify-center px-[18px] py-2 bg-primary/[0.06] border border-primary/[0.28] rounded-[20px] text-primary text-[0.86rem] font-extrabold cursor-pointer hover:bg-primary/[0.1] transition-colors duration-200 max-[1100px]:w-full max-[1100px]:min-w-0"
+                className="flex items-center gap-2 w-[210px] justify-center px-[18px] py-2 bg-primary/[0.06] border border-primary/[0.28] rounded-[20px] text-primary text-[0.86rem] font-extrabold cursor-pointer hover:bg-primary/[0.1] transition-colors duration-200 max-[1100px]:w-full"
                 onClick={() => setCalendarOpen(v => !v)}
               >
                 <CalendarDays className="w-[18px] h-[18px]" />
@@ -705,16 +719,18 @@ export default function PredictionsPage() {
                 {calendarOpen && (
                   <motion.div {...DROPDOWN_MOTION} className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 min-w-[260px] bg-[#141414] border border-white/[0.12] rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50">
                     <div className="flex items-center justify-between mb-2">
-                      <button type="button" className="bg-transparent border-none text-white/60 cursor-pointer p-1 rounded hover:text-white" onClick={() => {
+                      <button type="button" className="bg-transparent border-none text-white/60 cursor-pointer p-1 rounded hover:text-white" onClick={e => {
+                        e.stopPropagation();
                         if (calendarMonth === 0) { setCalendarMonth(11); setCalendarYear(y => y - 1); }
                         else { setCalendarMonth(m => m - 1); }
                       }}>
                         <ChevronLeft className="w-4 h-4" />
                       </button>
                       <span className="text-[0.85rem] font-extrabold text-white">
-                        {new Date(calendarYear, calendarMonth).toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
+                        {capitalizeFirst(new Date(calendarYear, calendarMonth).toLocaleDateString("es-AR", { month: "long", year: "numeric" }))}
                       </span>
-                      <button type="button" className="bg-transparent border-none text-white/60 cursor-pointer p-1 rounded hover:text-white" onClick={() => {
+                      <button type="button" className="bg-transparent border-none text-white/60 cursor-pointer p-1 rounded hover:text-white" onClick={e => {
+                        e.stopPropagation();
                         if (calendarMonth === 11) { setCalendarMonth(0); setCalendarYear(y => y + 1); }
                         else { setCalendarMonth(m => m + 1); }
                       }}>
@@ -800,27 +816,55 @@ export default function PredictionsPage() {
         )}
 
         {/* Summary row */}
-        <div className="grid grid-cols-3 gap-3 max-[760px]:grid-cols-1">
+        <div className="grid grid-cols-4 gap-3 max-[1024px]:grid-cols-2 max-[560px]:grid-cols-1">
+          <button
+            type="button"
+            className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-left cursor-pointer transition-all duration-200 hover:bg-white/[0.06] hover:border-white/[0.16] active:scale-[0.98]"
+            onClick={() => setFilter("saved")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-[1.35rem] font-black text-white">{savedCount}</span>
+                <span className="text-white text-[0.82rem] font-extrabold">hechas</span>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-white/35" />
+            </div>
+            <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Predicciones guardadas a la espera de que inicie el partido.</span>
+          </button>
+          <button
+            type="button"
+            className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-left cursor-pointer transition-all duration-200 hover:bg-white/[0.06] hover:border-white/[0.16] active:scale-[0.98]"
+            onClick={() => setFilter("pending")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-[1.35rem] font-black text-white">{pendingCount}</span>
+                <span className="text-white text-[0.82rem] font-extrabold">pendientes</span>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-white/35" />
+            </div>
+            <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Partidos pendientes de tu predicción.</span>
+          </button>
+          <button
+            type="button"
+            className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-left cursor-pointer transition-all duration-200 hover:bg-white/[0.06] hover:border-white/[0.16] active:scale-[0.98]"
+            onClick={() => setFilter("results")}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-[1.35rem] font-black text-white">{resultsCount}</span>
+                <span className="text-white text-[0.82rem] font-extrabold">resultados</span>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-white/35" />
+            </div>
+            <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Partidos finalizados en los que participaste.</span>
+          </button>
           <div className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg">
             <div className="flex items-baseline gap-2">
               <span className="font-display text-[1.35rem] font-black text-white">{validDirtyRows.length}</span>
               <span className="text-white text-[0.82rem] font-extrabold">cambios listos</span>
             </div>
             <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Hacé click en "Guardar predicciones" para aplicar cambios.</span>
-          </div>
-          <div className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg">
-            <div className="flex items-baseline gap-2">
-              <span className="font-display text-[1.35rem] font-black text-white">{pendingCount}</span>
-              <span className="text-white text-[0.82rem] font-extrabold">pendientes</span>
-            </div>
-            <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Partidos pendientes de predicción.</span>
-          </div>
-          <div className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg">
-            <div className="flex items-baseline gap-2">
-              <span className="font-display text-[1.35rem] font-black text-white">{searchedMatches.length}</span>
-              <span className="text-white text-[0.82rem] font-extrabold">en vista</span>
-            </div>
-            <span className="text-white/50 text-[0.7rem] font-semibold leading-tight">Partidos mostrándose en pantalla.</span>
           </div>
         </div>
 
@@ -835,9 +879,10 @@ export default function PredictionsPage() {
             sectionRows.map(section => (
               section.rows.length > 0 && (
                 <section key={section.title} className="mb-6">
-                  <div className="flex items-center justify-between gap-3 px-4 py-3 mb-2 text-white text-[0.95rem] font-extrabold border-b border-white/10">
+                  <div className="flex items-center gap-3 px-4 py-3 mb-2 text-white text-[0.95rem] font-extrabold border-b border-white/10">
+                    <SectionIcon title={section.title} />
                     <span>{section.title}</span>
-                    <span className="text-primary font-display">{section.rows.length}</span>
+                    <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-primary text-black text-[0.72rem] font-black">{section.rows.length}</span>
                   </div>
                   {section.rows.map(renderRow)}
                 </section>
