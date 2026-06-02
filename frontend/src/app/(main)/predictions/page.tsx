@@ -43,6 +43,26 @@ function capitalizeFirst(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function getTodayISO(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function getDateISO(offset: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
 function getTournamentDisplayName(name?: string | null): string {
   if (!name) return "Torneo";
   if (/^(wc|fifa wc)\s*2026$/i.test(name.trim())) return "World Cup 2026";
@@ -117,12 +137,10 @@ function isLive(status: string): boolean {
 function formatDateLabel(dateStr: string) {
   if (dateStr === "Sin fecha") return dateStr;
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getTodayISO();
     if (dateStr === today) return "Hoy";
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    if (dateStr === yesterday) return "Ayer";
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    if (dateStr === tomorrow) return "Mañana";
+    if (dateStr === getDateISO(-1)) return "Ayer";
+    if (dateStr === getDateISO(1)) return "Mañana";
     return capitalizeFirst(new Date(`${dateStr}T00:00:00`).toLocaleDateString("es-AR", {
       weekday: "long",
       day: "numeric",
@@ -765,7 +783,7 @@ export default function PredictionsPage() {
                       {Array.from({ length: new Date(calendarYear, calendarMonth + 1, 0).getDate() }).map((_, i) => {
                         const day = i + 1;
                         const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                        const isToday = dateStr === new Date().toISOString().slice(0, 10);
+                        const isToday = dateStr === getTodayISO();
                         const hasMatch = dateOptions.includes(dateStr);
                         const isSelected = selectedDate === dateStr;
                         return (
