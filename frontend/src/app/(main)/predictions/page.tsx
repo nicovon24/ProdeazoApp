@@ -26,6 +26,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Header } from "../../../components/layout/Header";
 import { ScoreInput } from "../../../components/ScoreInput";
 import { TeamLogo } from "../../../components/TeamLogo";
+import { FixtureRowSkeleton } from "../../../components/skeletons/FixtureRowSkeleton";
 import { useTournamentStore } from "../../../store/useTournamentStore";
 import { fetchFixtures, type Fixture } from "../../../api/fixtures";
 import { fetchPredictions, savePrediction, type Prediction } from "../../../api/predictions";
@@ -183,6 +184,7 @@ export default function PredictionsPage() {
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const dateRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const calendarPanelRef = useRef<HTMLDivElement>(null);
   const tournamentRef = useRef<HTMLDivElement>(null);
   const filterSelectRef = useRef<HTMLDivElement>(null);
 
@@ -220,13 +222,23 @@ export default function PredictionsPage() {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dateRef.current && !dateRef.current.contains(event.target as Node)) setDateOpen(false);
-      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) setCalendarOpen(false);
       if (tournamentRef.current && !tournamentRef.current.contains(event.target as Node)) setTournamentOpen(false);
       if (filterSelectRef.current && !filterSelectRef.current.contains(event.target as Node)) setFilterSelectOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!calendarOpen) return;
+    function handleCalendarClose(e: MouseEvent) {
+      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+        setCalendarOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleCalendarClose);
+    return () => document.removeEventListener("mousedown", handleCalendarClose);
+  }, [calendarOpen]);
 
   useEffect(() => {
     function handleScroll() {
@@ -592,7 +604,7 @@ export default function PredictionsPage() {
               className={`flex w-full items-center justify-between gap-2 px-4 py-2.5 bg-white/[0.05] border rounded-lg text-white text-[0.85rem] font-medium cursor-pointer transition-colors duration-150 ${filter !== "all" ? "border-primary/40 bg-primary/[0.06]" : "border-white/[0.1]"}`}
               onClick={() => setFilterSelectOpen(v => !v)}
             >
-              <span className="flex-1 text-left">{FILTERS.find(f => f.id === filter)?.label ?? "Todas"}</span>
+              <span className="flex-1 text-left">{filter === "all" && isMobile ? "Todas las predicciones" : FILTERS.find(f => f.id === filter)?.label ?? "Todas"}</span>
               <ChevronDown className="w-4 h-4 text-white/50 shrink-0" />
             </button>
             <AnimatePresence>
@@ -613,7 +625,7 @@ export default function PredictionsPage() {
             </AnimatePresence>
           </div>
 
-          <div className="flex flex-col items-end pb-3 text-[0.75rem] text-white/60 leading-[1.4] whitespace-nowrap max-[760px]:items-start max-[760px]:w-full">
+          <div className="flex flex-col items-end pb-3 text-[0.75rem] text-white/60 leading-[1.4] whitespace-nowrap max-[760px]:flex-row max-[760px]:items-center max-[760px]:justify-between max-[760px]:w-full">
             <span>Predicciones guardadas</span>
             <span className="text-primary font-extrabold">{savedCount}/{matches.length} partidos</span>
           </div>
@@ -723,7 +735,7 @@ export default function PredictionsPage() {
               </button>
               <AnimatePresence>
                 {calendarOpen && (
-                  <motion.div {...DROPDOWN_MOTION} onMouseDown={e => e.stopPropagation()} className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 min-w-[260px] bg-[#141414] border border-white/[0.12] rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50">
+                  <motion.div {...DROPDOWN_MOTION} className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 min-w-[260px] bg-[#141414] border border-white/[0.12] rounded-xl p-3 shadow-[0_12px_40px_rgba(0,0,0,0.5)] z-50" ref={calendarPanelRef}>
                     <div className="flex items-center justify-between mb-2">
                       <button type="button" className="bg-transparent border-none text-white/60 cursor-pointer p-1 rounded hover:text-white" onClick={e => {
                         e.stopPropagation();
@@ -758,7 +770,7 @@ export default function PredictionsPage() {
                         const isSelected = selectedDate === dateStr;
                         return (
                           <button
-                            key={day}
+                            key={`${calendarYear}-${calendarMonth}-${day}`}
                             type="button"
                             disabled={!hasMatch}
                             className={`text-[0.78rem] font-bold rounded-lg py-1.5 transition-colors duration-150 cursor-pointer
@@ -785,9 +797,9 @@ export default function PredictionsPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 max-[1100px]:w-full">
+          <div className="flex items-center gap-2 max-[1100px]:w-full max-[760px]:flex-col-reverse max-[760px]:gap-2">
             <button
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-transparent border border-white/20 rounded-lg text-white/75 text-[0.85rem] font-extrabold cursor-pointer transition-all duration-200 disabled:opacity-[0.35] disabled:cursor-not-allowed hover:not-disabled:bg-white/[0.06] hover:not-disabled:text-white max-[1100px]:flex-1"
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-transparent border border-white/20 rounded-lg text-white/75 text-[0.85rem] font-extrabold cursor-pointer transition-all duration-200 disabled:opacity-[0.35] disabled:cursor-not-allowed hover:not-disabled:bg-white/[0.06] hover:not-disabled:text-white max-[1100px]:flex-1 max-[760px]:w-full max-[760px]:py-2"
               onClick={handleDiscard}
               disabled={!hasDirtyRows || saving}
             >
@@ -795,7 +807,7 @@ export default function PredictionsPage() {
               Descartar
             </button>
             <button
-              className="flex items-center justify-center gap-2 min-w-[190px] px-5 py-3 bg-primary border-none rounded-lg text-black text-[0.9rem] font-extrabold cursor-pointer transition-[opacity,transform] duration-200 disabled:opacity-[0.42] disabled:cursor-not-allowed hover:not-disabled:opacity-[0.92] hover:not-disabled:-translate-y-px max-[1100px]:flex-1"
+              className="flex items-center justify-center gap-2 min-w-[190px] px-5 py-3 bg-primary border-none rounded-lg text-black text-[0.9rem] font-extrabold cursor-pointer transition-[opacity,transform] duration-200 disabled:opacity-[0.42] disabled:cursor-not-allowed hover:not-disabled:opacity-[0.92] hover:not-disabled:-translate-y-px max-[1100px]:flex-1 max-[760px]:w-full max-[760px]:py-4"
               onClick={handleSave}
               disabled={!canSave}
             >
@@ -822,7 +834,7 @@ export default function PredictionsPage() {
         )}
 
         {/* Summary row */}
-        <div className="grid grid-cols-4 gap-3 max-[1024px]:grid-cols-2 max-[560px]:grid-cols-1">
+        <div className="grid grid-cols-4 gap-3 max-[1024px]:grid-cols-2 max-[560px]:grid-cols-1 max-[760px]:hidden">
           <button
             type="button"
             className="flex flex-col gap-1 px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-left cursor-pointer transition-all duration-200 hover:bg-white/[0.06] hover:border-white/[0.16] active:scale-[0.98]"
@@ -874,36 +886,42 @@ export default function PredictionsPage() {
           </div>
         </div>
 
-        <div>
-          {loading ? (
-            <div className="py-8 text-center text-white/55">Cargando predicciones...</div>
-          ) : matches.length === 0 ? (
-            <div className="py-8 text-center text-white/55">No hay partidos disponibles.</div>
-          ) : sectionRows.every(section => section.rows.length === 0) ? (
-            <div className="py-8 text-center text-white/55">No hay predicciones con estos filtros.</div>
-          ) : (
-            sectionRows.map(section => (
-              section.rows.length > 0 && (
-                <section key={section.title} className="mb-6">
-                  <div className="flex items-center gap-3 px-4 py-3 mb-2 text-white text-[0.95rem] font-extrabold border-b border-white/10">
-                    <SectionIcon title={section.title} />
-                    <span>{section.title}</span>
-                    <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-primary text-black text-[0.72rem] font-black">{section.rows.length}</span>
-                  </div>
-                  {section.rows.map(renderRow)}
-                </section>
-              )
-            ))
+        <div className="flex flex-col flex-1 gap-6">
+          <div className="flex-1">
+            {loading ? (
+              <div>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <FixtureRowSkeleton key={i} />
+                ))}
+              </div>
+            ) : matches.length === 0 ? (
+              <div className="py-8 text-center text-white/55">No hay partidos disponibles.</div>
+            ) : sectionRows.every(section => section.rows.length === 0) ? (
+              <div className="py-8 text-center text-white/55">No hay predicciones con estos filtros.</div>
+            ) : (
+              sectionRows.map(section => (
+                section.rows.length > 0 && (
+                  <section key={section.title} className="mb-6">
+                    <div className="flex items-center gap-3 px-4 py-3 mb-2 text-white text-[0.95rem] font-extrabold border-b border-white/10">
+                      <SectionIcon title={section.title} />
+                      <span>{section.title}</span>
+                      <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-primary text-black text-[0.72rem] font-black">{section.rows.length}</span>
+                    </div>
+                    {section.rows.map(renderRow)}
+                  </section>
+                )
+              ))
+            )}
+          </div>
+
+          {/* Footer area */}
+          {filter !== "results" && (
+            <div className="flex items-center gap-3 bg-primary/[0.05] border border-primary/[0.2] rounded-lg px-4 py-3 text-white/82 text-[0.85rem] font-semibold mt-auto">
+              <Info className="text-primary w-[18px] h-[18px] shrink-0" />
+              Podés editar tus predicciones hasta el inicio de cada partido.
+            </div>
           )}
         </div>
-
-        {/* Footer area */}
-        {filter !== "results" && (
-          <div className="flex items-center gap-3 bg-primary/[0.05] border border-primary/[0.2] rounded-lg px-4 py-3 text-white/82 text-[0.85rem] font-semibold">
-            <Info className="text-primary w-[18px] h-[18px] shrink-0" />
-            Podés editar tus predicciones hasta el inicio de cada partido.
-          </div>
-        )}
 
         <AnimatePresence>
           {showBackTop && (
