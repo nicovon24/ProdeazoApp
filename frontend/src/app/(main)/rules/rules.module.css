@@ -6,59 +6,9 @@
   gap: 24px;
 }
 
-/* ── Tab Bar ── */
-.tabBar {
-  display: flex;
-  gap: 32px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.tabBar::-webkit-scrollbar {
-  display: none;
-}
-
-.tabBtn {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.9rem;
-  font-weight: 600;
-  padding: 12px 0;
-  cursor: pointer;
-  position: relative;
-  transition: color 0.2s;
-  white-space: nowrap;
-}
-
-.tabBtn:hover {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.tabBtnActive {
-  color: var(--color-primary);
-}
-
-.tabBtnActive::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: var(--color-primary);
-}
-
-.tabDesc {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 16px;
-}
-
 /* ── Content Area ── */
 .contentArea {
+  flex: 1;
   display: flex;
   gap: 24px;
   align-items: flex-start;
@@ -120,28 +70,41 @@
   border-radius: 12px;
 }
 
-.pointRowDanger {
-  background-color: rgba(213, 2, 4, 0.05);
-  border-color: rgba(213, 2, 4, 0.2);
+.pointRowExact {
+  background: linear-gradient(135deg, rgba(0, 206, 23, 0.12), rgba(0, 206, 23, 0.03));
+  border-color: rgba(0, 206, 23, 0.4);
 }
 
-.pointRowBonus {
-  background-color: rgba(175, 232, 5, 0.05);
-  border-color: rgba(175, 232, 5, 0.2);
+.pointRowPartial {
+  background: linear-gradient(135deg, rgba(255, 204, 0, 0.12), rgba(255, 204, 0, 0.03));
+  border-color: rgba(255, 204, 0, 0.4);
+}
+
+.pointRowDanger {
+  background: linear-gradient(135deg, rgba(213, 2, 4, 0.10), rgba(213, 2, 4, 0.02));
+  border-color: rgba(213, 2, 4, 0.3);
 }
 
 .pointRowIcon {
-  width: 20px;
-  height: 20px;
+  width: 32px;
+  height: 32px;
   color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pointRowExact .pointRowIcon {
+  color: #00CE17;
+}
+
+.pointRowPartial .pointRowIcon {
+  color: #ffcc00;
 }
 
 .pointRowDanger .pointRowIcon {
-  color: #D50204;
-}
-
-.pointRowBonus .pointRowIcon {
-  color: var(--color-primary);
+  color: #ff4d4d;
 }
 
 .pointRowContent {
@@ -162,13 +125,21 @@
 
 .pointRowValue {
   font-family: var(--font-display), sans-serif;
-  font-size: 1.1rem;
-  font-weight: 800;
+  font-size: 1.3rem;
+  font-weight: 900;
   color: var(--color-primary);
 }
 
-.pointRowDanger .pointRowValue {
-  color: #D50204;
+.pointRowValueExact {
+  color: #00CE17;
+}
+
+.pointRowValuePartial {
+  color: #ffcc00;
+}
+
+.pointRowValueDanger {
+  color: #ff4d4d;
 }
 
 .infoNote {
@@ -180,7 +151,7 @@
   border-radius: 8px;
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
-  margin-top: 8px;
+  margin-top: auto;
 }
 
 .infoNoteIcon {
@@ -233,57 +204,26 @@
   padding-left: 4px;
 }
 
-/* CTA Banner */
-.ctaBanner {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  background: linear-gradient(135deg, rgba(8, 48, 0, 0.8), rgba(2, 21, 0, 0.9));
-  border: 1px solid rgba(175, 232, 5, 0.2);
-  border-radius: 12px;
-  padding: 24px 32px;
-  margin-top: 16px;
-}
+/* ── Responsive ── */
+@media (max-width: 767px) {
+  .main {
+    padding: 16px 16px 24px;
+  }
 
-.ctaBannerIcon {
-  width: 40px;
-  height: 40px;
-  color: var(--color-primary);
-}
+  .contentArea {
+    flex-direction: column;
+  }
 
-.ctaBannerContent {
-  flex: 1;
-}
+  .leftCol,
+  .rightCol {
+    width: 100%;
+  }
 
-.ctaBannerTitle {
-  font-family: var(--font-display), sans-serif;
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 2px;
-}
+  .sectionP {
+    max-width: 100%;
+  }
 
-.ctaBannerDesc {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.ctaBannerBtn {
-  background-color: var(--color-primary);
-  color: #000;
-  border: none;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: opacity 0.2s;
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ctaBannerBtn:hover {
-  opacity: 0.9;
+  .pointRowValue {
+    font-size: 1.1rem;
+  }
 }
