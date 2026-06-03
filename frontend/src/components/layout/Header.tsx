@@ -21,6 +21,8 @@ import { useUIStore } from "../../store/useUIStore";
 interface HeaderProps {
   title: string;
   subtitle?: string;
+  onBack?: () => void;
+  backLabel?: string;
 }
 
 const Instagram = ({ className }: { className?: string }) => (
@@ -44,7 +46,7 @@ const Twitter = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, onBack, backLabel }: HeaderProps) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -99,6 +101,18 @@ export function Header({ title, subtitle }: HeaderProps) {
            <ArrowLeft className={clsx("absolute inset-0 transition-transform duration-300 hidden md:max-lg:block", sidebarOpen ? "rotate-0 scale-100 opacity-100" : "-rotate-180 scale-0 opacity-0")} />
         </div>
       </button>
+
+      {/* Back button */}
+      {onBack && (
+        <button
+          className="flex items-center gap-2 self-stretch bg-transparent border-none text-white/50 hover:text-white cursor-pointer text-[1rem] font-extrabold tracking-wide transition-all duration-200 px-3 -ml-2 mr-1 shrink-0 rounded-xl hover:bg-white/[0.07]"
+          onClick={onBack}
+          type="button"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          {backLabel ?? 'VOLVER'}
+        </button>
+      )}
 
       {/* Page title */}
       <div className="mr-auto flex flex-col gap-0.5 min-w-0">
