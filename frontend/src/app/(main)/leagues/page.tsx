@@ -27,6 +27,7 @@ import {
   type MyLeagueRow,
 } from "../../../api/mini-leagues";
 import { ApiError } from "../../../api/client";
+import { staggerContainer, fadeInUp } from "../../../lib/animations";
 
 type ToastTone = "success" | "error";
 interface ToastState { tone: ToastTone; title: string; message: string }
@@ -60,7 +61,7 @@ export default function LeaguesPage() {
   const [activeTab, setActiveTab] = useState("Mis Ligas");
   const [myLeagues, setMyLeagues] = useState<MyLeagueRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [leaguePositions, setLeaguePositions] = useState<Record<string, { rank: number; totalMembers: number } | null>>({});
+  const [leaguePositions, setLeaguePositions] = useState<Record<string, { rank: number; totalMembers: number; totalPoints: number } | null>>({});
 
   // Create modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -86,7 +87,19 @@ export default function LeaguesPage() {
 
   const loadLeagues = useCallback(() => {
     let cancelled = false;
+    const startTime = Date.now();
     setLoading(true);
+
+    function finishLoading() {
+      const elapsed = Date.now() - startTime;
+      const remaining = 750 - elapsed;
+      if (remaining > 0) {
+        setTimeout(() => { if (!cancelled) setLoading(false); }, remaining);
+      } else {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
     getMyLeagues()
       .then(async (data) => {
         if (cancelled) return;
@@ -94,13 +107,13 @@ export default function LeaguesPage() {
         setMyLeagues(rows);
 
         // Fetch leaderboard for each league to find user's position
-        const posMap: Record<string, { rank: number; totalMembers: number } | null> = {};
+        const posMap: Record<string, { rank: number; totalMembers: number; totalPoints: number } | null> = {};
         const leaderboardPromises = rows.map(async ({ league }) => {
           try {
             const lb = await getLeagueLeaderboard(league.id);
             const entry = lb.results.find(e => e.id === currentUser?.id);
             if (entry) {
-              posMap[league.id] = { rank: entry.rank, totalMembers: lb.count };
+              posMap[league.id] = { rank: entry.rank, totalMembers: lb.count, totalPoints: entry.totalPoints };
             } else {
               posMap[league.id] = null;
             }
@@ -112,7 +125,7 @@ export default function LeaguesPage() {
         if (!cancelled) setLeaguePositions(posMap);
       })
       .catch(() => { if (!cancelled) setMyLeagues([]); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .finally(finishLoading);
     return () => { cancelled = true; };
   }, [currentUser?.id]);
 
@@ -135,7 +148,7 @@ export default function LeaguesPage() {
 
   // Stats derived from leaderboard data
   const avgPosition = (() => {
-    const positions = Object.values(leaguePositions).filter(Boolean) as { rank: number; totalMembers: number }[];
+    const positions = Object.values(leaguePositions).filter(Boolean) as { rank: number; totalMembers: number; totalPoints: number }[];
     if (positions.length === 0) return null;
     const avg = positions.reduce((s, p) => s + p.rank, 0) / positions.length;
     return Math.round(avg * 10) / 10;
@@ -289,10 +302,11 @@ export default function LeaguesPage() {
                     <p className="text-[0.85rem] text-white/40">Creá una liga o unite a una con un código.</p>
                   </div>
                 ) : (
-                  myLeagues.map(({ league, role }) => {
+                  <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="flex flex-col gap-2">
+                  {myLeagues.map(({ league, role }) => {
                     const pos = leaguePositions[league.id];
                     return (
-                      <div key={league.id} className="flex items-center gap-5 px-5 py-4 bg-white/[0.03] border border-white/[0.08] rounded-xl transition-[border-color] duration-200 hover:border-white/20">
+                      <motion.div key={league.id} variants={fadeInUp} className="flex items-center gap-5 px-5 py-4 bg-white/[0.03] border border-white/[0.08] rounded-xl transition-[border-color] duration-200 hover:border-white/20 cursor-pointer" onClick={() => router.push('/leagues/' + league.id)}>
                         <div
                           className="w-[52px] h-[52px] bg-white/[0.05] rounded-lg flex items-center justify-center text-primary"
                           style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
@@ -310,21 +324,23 @@ export default function LeaguesPage() {
                         </div>
 
                         {pos && (
-                          <div className="flex flex-col items-center mr-3">
+                          <div className="flex flex-col items-center mr-3 gap-1">
                             <span className="font-display text-[1.2rem] font-extrabold text-primary">#{pos.rank}</span>
                             <span className="text-[0.6rem] text-white/45 uppercase font-bold">{pos.totalMembers} {pos.totalMembers === 1 ? 'PARTICIPANTE' : 'PARTICIPANTES'}</span>
+                            <span className="text-[0.75rem] font-bold text-white/70">{pos.totalPoints} pts</span>
                           </div>
                         )}
 
                         <button
                           className="px-4 py-2 rounded-lg bg-transparent border border-primary/30 text-primary text-[0.8rem] font-semibold cursor-pointer transition-all duration-200 hover:bg-primary/10"
-                          onClick={() => router.push('/leagues/' + league.id)}
+                          onClick={(e) => { e.stopPropagation(); router.push('/leagues/' + league.id); }}
                         >
                           Ver liga
                         </button>
-                      </div>
+                      </motion.div>
                     );
-                  })
+                  })}
+                  </motion.div>
                 )}
               </div>
             </div>
@@ -367,7 +383,7 @@ export default function LeaguesPage() {
             <ShieldHalf className="w-12 h-12 text-white/20" />
             <h3 className="text-[1.15rem] font-bold text-white">Explorar ligas</h3>
             <p className="text-[0.9rem] text-white/50 max-w-[480px] leading-relaxed">
-              Las ligas en Prodeazo son privadas. Solo podés unirte si tenés un código o un link de invitación de un miembro existente.
+               Las ligas en Prodeazo, por ahora, son privadas. Solo podés unirte si tenés un código o un link de invitación de un miembro existente.
             </p>
             <button
               className="px-6 py-2.5 bg-transparent border border-primary/30 rounded-lg text-primary text-[0.9rem] font-semibold cursor-pointer transition-colors duration-200 hover:bg-primary/10"

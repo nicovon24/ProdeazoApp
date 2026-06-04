@@ -291,7 +291,7 @@ export default function LeagueDetailPage() {
             <h2 className="text-[1.05rem] font-bold text-white">Clasificación</h2>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-hidden">
           <div className="min-w-[360px]">
           <div className="grid [grid-template-columns:64px_1fr_120px] px-4 md:px-6 py-2.5 text-[0.65rem] font-bold text-white/35 uppercase tracking-[0.05em] border-b border-white/[0.04]">
             <div>POS</div>
