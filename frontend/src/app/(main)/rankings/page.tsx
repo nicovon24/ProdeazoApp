@@ -68,16 +68,22 @@ export default function RankingsPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [myStats, setMyStats] = useState<MyLeaderboardStats | null>(null);
   const [history, setHistory] = useState<PointsHistoryEntry[]>([]);
+  const [totalParticipants, setTotalParticipants] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
 
-    Promise.all([fetchLeaderboard(1, 100), fetchMyLeaderboardStats(), fetchMyPointsHistory()])
+    Promise.all([
+      fetchLeaderboard(1, 100).catch(e => { console.warn("leaderboard error", e); return { count: 0, results: [], next: null, previous: null }; }), 
+      fetchMyLeaderboardStats().catch(e => { console.warn("stats error", e); return null; }), 
+      fetchMyPointsHistory().catch(e => { console.warn("history error", e); return { results: [] }; })
+    ])
       .then(([lb, stats, hist]) => {
         if (!cancelled) {
           setLeaderboard(lb.results);
+          setTotalParticipants(lb.count);
           setMyStats(stats);
           setHistory(hist.results);
         }
@@ -118,7 +124,6 @@ export default function RankingsPage() {
 
   const top10 = sorted.slice(0, 10);
   const userInTop10 = globalRank !== null && globalRank <= 10;
-  const tournamentNotStarted = !loading && sorted.length > 0 && sorted[0].totalPoints === 0;
 
   return (
     <>
@@ -152,215 +157,237 @@ export default function RankingsPage() {
           ))}
         </motion.div>
 
-        {/* Chart Section */}
-        <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 md:p-6 flex flex-col gap-4">
-          <div className="flex flex-wrap justify-between items-center gap-3">
-            <h3 className="text-[1.1rem] font-bold text-white">Evolución de puntos</h3>
-            <div className="flex gap-2 flex-wrap">
-              {['Semanal', 'Mensual', 'Todo el Torneo'].map(tab => (
-                <button
-                  key={tab}
-                  className={clsx(
-                    "px-3 py-1.5 min-h-[36px] bg-white/[0.05] border border-transparent rounded-lg text-[0.8rem] font-semibold cursor-pointer transition-all duration-200",
-                    activeChartTab === tab
-                      ? "bg-primary/10 border-primary/30 text-primary"
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
-                  )}
-                  onClick={() => setActiveChartTab(tab)}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+          {/* Leaderboard Column (Left - 1/3) */}
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl overflow-hidden flex flex-col min-h-0 lg:col-span-1">
+            <div className="flex items-center gap-2 px-4 py-4 border-b border-white/[0.05] flex-none">
+              <Trophy className="w-4 h-4 text-primary shrink-0" />
+              <h3 className="text-[0.95rem] font-bold text-white whitespace-nowrap">Top Global</h3>
+              <div className="ml-auto flex items-center gap-2">
+                {totalParticipants > 0 && (
+                  <span className="text-[0.7rem] text-white/40">
+                    {totalParticipants.toLocaleString('es-AR')} participantes
+                  </span>
+                )}
+                <select
+                  disabled
+                  className="hidden w-fit bg-black/40 border border-white/10 text-white/40 text-[0.7rem] font-semibold py-1 pl-2 pr-6 rounded-md outline-none appearance-none cursor-not-allowed"
                 >
-                  {tab}
-                </button>
-              ))}
+                  <option>Histórico</option>
+                  <option>Mes actual</option>
+                  <option>Último mes</option>
+                </select>
+              </div>
             </div>
-          </div>
 
-          <div className="w-full h-[250px]">
-            {!loading && chartData.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-white/35 text-[0.85rem]">
-                Todavía no tenés predicciones puntuadas en este período.
+            {/* No users at all */}
+            {!loading && leaderboard.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-4 py-8 gap-3 min-h-0">
+                <div className="w-12 h-12 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center">
+                  <Users className="w-6 h-6 text-white/40" />
+                </div>
+                <div>
+                  <p className="text-[0.9rem] font-bold text-white mb-1">Sin usuarios en el Top</p>
+                  <p className="text-[0.75rem] text-white/50 max-w-[200px] mx-auto leading-[1.5]">
+                    Todavía no hay jugadores registrados en Prodeazo.
+                  </p>
+                </div>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorPuntos" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#AFE805" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#AFE805" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    stroke="rgba(255,255,255,0.3)"
-                    tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    dy={10}
-                  />
-                  <YAxis
-                    stroke="rgba(255,255,255,0.3)"
-                    tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    dx={-10}
-                  />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                    itemStyle={{ color: '#AFE805', fontWeight: 'bold' }}
-                  />
-                  <Area type="monotone" dataKey="puntos" stroke="none" fillOpacity={1} fill="url(#colorPuntos)" />
-                  <Line type="monotone" dataKey="puntos" stroke="#AFE805" strokeWidth={3} dot={{ r: 4, fill: '#AFE805', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#fff', stroke: '#AFE805', strokeWidth: 2 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-none grid [grid-template-columns:48px_1fr_60px] px-4 py-2.5 text-[0.65rem] font-bold text-white/35 uppercase border-b border-white/[0.05]">
+                  <div>POS</div>
+                  <div>PARTICIPANTE</div>
+                  <div className="text-right">PUNTOS</div>
+                </div>
 
-        {/* Leaderboard Table */}
-        <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl overflow-hidden">
-          <div className="flex items-center gap-3 px-4 md:px-6 py-4 border-b border-white/[0.05]">
-            <Trophy className="w-5 h-5 text-primary" />
-            <h3 className="text-[1.05rem] font-bold text-white">Top 10 Global</h3>
-            {leaderboard.length > 0 && (
-              <span className="ml-auto text-[0.75rem] text-white/40">
-                {leaderboard.length.toLocaleString('es-AR')} participantes
-              </span>
-            )}
-          </div>
-
-          {/* No users at all */}
-          {!loading && leaderboard.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center px-6 py-10 gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center">
-                <Users className="w-7 h-7 text-white/40" />
-              </div>
-              <div>
-                <p className="text-[1rem] font-bold text-white mb-1">Nadie se inscribió aún</p>
-                <p className="text-[0.82rem] text-white/50 max-w-[280px] leading-[1.5]">
-                  Cuando otros jugadores se unan a Prodeazo, aparecerán acá en el ranking.
-                </p>
-              </div>
-            </div>
-          ) : /* Pre-tournament empty state */
-          tournamentNotStarted ? (
-            <div className="flex flex-col items-center justify-center text-center px-6 py-10 gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-primary/[0.1] border border-primary/[0.2] flex items-center justify-center">
-                <CalendarClock className="w-7 h-7 text-primary" />
-              </div>
-              <div>
-                <p className="text-[1rem] font-bold text-white mb-1">El torneo todavía no comenzó</p>
-                <p className="text-[0.82rem] text-white/50 max-w-[280px] leading-[1.5]">
-                  Cuando se disputen los primeros partidos, el ranking se actualizará automáticamente.
-                </p>
-              </div>
-              {leaderboard.length > 0 && (
-                <p className="text-[0.78rem] text-white/35 font-semibold">
-                  {leaderboard.length.toLocaleString('es-AR')} participantes inscriptos
-                </p>
-              )}
-              <Link
-                href="/predictions"
-                className="mt-1 flex items-center gap-2 px-5 py-2.5 bg-primary text-black text-[0.82rem] font-bold rounded-lg no-underline transition-opacity hover:opacity-90"
-              >
-                Hacé tus predicciones mientras tanto
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          ) : (
-            <div className="min-w-[360px]">
-              <div className="grid [grid-template-columns:56px_3fr_1fr] px-4 md:px-6 py-3 text-[0.68rem] font-bold text-white/35 uppercase border-b border-white/[0.05]">
-                <div>POS</div>
-                <div>PARTICIPANTE</div>
-                <div>PUNTOS</div>
-              </div>
-
-              {loading ? (
-                <>
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <RankingRowSkeleton key={i} />
-                  ))}
-                </>
-              ) : (
-                <>
-                  <motion.div variants={staggerContainer} initial="hidden" animate="visible">
-                    {top10.map((entry: LeaderboardEntry, i: number) => {
-                      const rank = i + 1;
-                      const posColor =
-                        rank === 1 ? 'text-[#FFCC00]' :
-                        rank === 2 ? 'text-[#C0C0C0]' :
-                        rank === 3 ? 'text-[#CD7F32]' :
-                                     'text-white/50';
-                      const posDisplay =
-                        rank === 1 ? '🥇' :
-                        rank === 2 ? '🥈' :
-                        rank === 3 ? '🥉' :
-                                     `${rank}°`;
-                      const initials = getInitials(entry.name);
-                      return (
-                        <motion.div
-                          key={entry.id}
-                          variants={fadeInUp}
-                          className="grid [grid-template-columns:56px_3fr_1fr] px-4 md:px-6 py-4 items-center border-b border-white/[0.03] transition-colors duration-150 hover:bg-white/[0.03]"
-                        >
-                          <div className={clsx("font-display text-[1.2rem] font-extrabold", posColor)}>
-                            {posDisplay}
-                          </div>
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/50 text-[0.8rem] font-semibold overflow-hidden shrink-0">
-                              {entry.avatar ? (
-                                <img src={entry.avatar} alt={entry.name} className="w-full h-full object-cover" />
-                              ) : (
-                                initials
-                              )}
-                            </div>
-                            <span className="text-[0.92rem] font-semibold text-white truncate">{entry.name}</span>
-                          </div>
-                          <div className="font-display text-[1.1rem] font-bold text-white">
-                            {entry.totalPoints.toLocaleString('es-AR')}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </motion.div>
-
-                  {/* Separator + user row (only if user is not in top 10) */}
-                  {!userInTop10 && leaderboard.length > 0 && (
+                <div className="flex-1 overflow-y-auto">
+                  {loading ? (
                     <>
-                      <div className="grid [grid-template-columns:56px_3fr_1fr] px-4 md:px-6 py-2 items-center opacity-40 select-none">
-                        <div className="text-white/60 font-bold text-[1rem] tracking-widest">···</div>
-                        <div />
-                        <div />
-                      </div>
-                      <div className="grid [grid-template-columns:56px_3fr_1fr] px-4 md:px-6 py-4 items-center bg-primary/[0.06] border-t border-primary/[0.15]">
-                        <div className="font-display text-[1.2rem] font-extrabold text-white/70">
-                          {globalRank !== null ? `${globalRank.toLocaleString('es-AR')}°` : '—'}
-                        </div>
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-black text-[0.8rem] font-semibold overflow-hidden shrink-0"
-                            style={{ backgroundColor: 'var(--color-primary)' }}
-                          >
-                            {user?.name ? getInitials(user.name) : 'TÚ'}
+                      {Array.from({ length: 15 }).map((_, i) => (
+                        <RankingRowSkeleton key={i} />
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <motion.div variants={staggerContainer} initial="hidden" animate="visible">
+                        {sorted.slice(0, 30).map((entry: LeaderboardEntry, i: number) => {
+                          const rank = i + 1;
+                          const posColor =
+                            rank === 1 ? 'text-[#FFCC00]' :
+                            rank === 2 ? 'text-[#C0C0C0]' :
+                            rank === 3 ? 'text-[#CD7F32]' :
+                                         'text-white/50';
+                          const posDisplay =
+                            rank === 1 ? '🥇' :
+                            rank === 2 ? '🥈' :
+                            rank === 3 ? '🥉' :
+                                         `${rank}°`;
+                          const initials = getInitials(entry.name);
+                          const isCurrentUser = user && entry.id === user.id;
+
+                          return (
+                            <motion.div
+                              key={entry.id}
+                              variants={fadeInUp}
+                              className={clsx(
+                                "grid [grid-template-columns:48px_1fr_60px] px-4 py-3 items-center border-b transition-colors duration-150",
+                                isCurrentUser
+                                  ? "bg-primary/[0.06] border-primary/[0.15] hover:bg-primary/[0.08]"
+                                  : "border-white/[0.03] hover:bg-white/[0.03]"
+                              )}
+                            >
+                              <div className={clsx("font-display text-[1rem] font-extrabold", posColor)}>
+                                {posDisplay}
+                              </div>
+                              <div className="flex items-center gap-2 min-w-0 pr-2">
+                                <div
+                                  className={clsx(
+                                    "w-6 h-6 rounded-full flex items-center justify-center text-[0.65rem] font-semibold overflow-hidden shrink-0",
+                                    isCurrentUser ? "text-black" : "bg-white/10 text-white/50"
+                                  )}
+                                  style={isCurrentUser ? { backgroundColor: 'var(--color-primary)' } : undefined}
+                                >
+                                  {entry.avatar ? (
+                                    <img src={entry.avatar} alt={entry.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    initials
+                                  )}
+                                </div>
+                                <span className={clsx("text-[0.85rem] font-semibold truncate", isCurrentUser ? "text-white" : "text-white/90")}>
+                                  {entry.name}
+                                </span>
+                                {isCurrentUser && (
+                                  <span className="bg-primary text-black text-[0.55rem] font-extrabold px-1.5 py-[2px] rounded uppercase shrink-0">
+                                    TÚ
+                                  </span>
+                                )}
+                              </div>
+                              <div className="font-display text-[0.95rem] font-bold text-white text-right">
+                                {entry.totalPoints.toLocaleString('es-AR')}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </motion.div>
+
+                      {/* User row if they are not in the top 30 */}
+                      {globalRank !== null && globalRank > 30 && leaderboard.length > 0 && (
+                        <>
+                          <div className="grid [grid-template-columns:48px_1fr_60px] px-4 py-1 items-center opacity-40 select-none">
+                            <div className="text-white/60 font-bold text-[0.9rem] tracking-widest text-center">···</div>
+                            <div />
+                            <div />
                           </div>
-                          <span className="text-[0.92rem] font-semibold text-white truncate">
-                            {user?.name ?? 'tu_usuario'}
-                          </span>
-                          <span className="bg-primary text-black text-[0.55rem] font-extrabold px-1.5 py-[2px] rounded uppercase shrink-0">
-                            TÚ
-                          </span>
-                        </div>
-                        <div className="font-display text-[1.1rem] font-bold text-white">
-                          {totalPoints !== null ? totalPoints.toLocaleString('es-AR') : '—'}
-                        </div>
-                      </div>
+                          <div className="grid [grid-template-columns:48px_1fr_60px] px-4 py-3 items-center bg-primary/[0.06] border-t border-primary/[0.15]">
+                            <div className="font-display text-[1rem] font-extrabold text-white/70">
+                              {globalRank.toLocaleString('es-AR')}°
+                            </div>
+                            <div className="flex items-center gap-2 min-w-0 pr-2">
+                              <div
+                                className="w-6 h-6 rounded-full flex items-center justify-center text-black text-[0.65rem] font-semibold overflow-hidden shrink-0"
+                                style={{ backgroundColor: 'var(--color-primary)' }}
+                              >
+                                {user?.name ? getInitials(user.name) : 'TÚ'}
+                              </div>
+                              <span className="text-[0.85rem] font-semibold text-white truncate">
+                                {user?.name ?? 'tu_usuario'}
+                              </span>
+                              <span className="bg-primary text-black text-[0.55rem] font-extrabold px-1.5 py-[2px] rounded uppercase shrink-0">
+                                TÚ
+                              </span>
+                            </div>
+                            <div className="font-display text-[0.95rem] font-bold text-white text-right">
+                              {totalPoints !== null ? totalPoints.toLocaleString('es-AR') : '—'}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
+                </div>
+              </div>
+            )}
+          </div>
 
+          {/* Right Column (2/3) */}
+          <div className="flex flex-col gap-4 min-h-0 lg:col-span-2">
+            {/* Chart Section */}
+            <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-4 md:p-6 flex flex-col gap-4">
+              <div className="flex flex-wrap justify-between items-center gap-3">
+                <h3 className="text-[1.05rem] font-bold text-white">Evolución de puntos</h3>
+                <div className="flex gap-2 flex-wrap">
+                  {['Semanal', 'Mensual', 'Todo el Torneo'].map(tab => (
+                    <button
+                      key={tab}
+                      className={clsx(
+                        "px-3 py-1.5 min-h-[34px] bg-white/[0.05] border border-transparent rounded-lg text-[0.75rem] font-semibold cursor-pointer transition-all duration-200",
+                        activeChartTab === tab
+                          ? "bg-primary/10 border-primary/30 text-primary"
+                          : "text-white/60 hover:bg-white/10 hover:text-white"
+                      )}
+                      onClick={() => setActiveChartTab(tab)}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                </>
-              )}
+              <div className="w-full h-[220px]">
+                {!loading && chartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-white/35 text-[0.85rem]">
+                    Todavía no tenés predicciones puntuadas en este período.
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorPuntos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#AFE805" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#AFE805" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="rgba(255,255,255,0.3)"
+                        tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                        dy={10}
+                      />
+                      <YAxis
+                        stroke="rgba(255,255,255,0.3)"
+                        tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                        dx={-10}
+                      />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                        itemStyle={{ color: '#AFE805', fontWeight: 'bold' }}
+                      />
+                      <Area type="monotone" dataKey="puntos" stroke="none" fillOpacity={1} fill="url(#colorPuntos)" />
+                      <Line type="monotone" dataKey="puntos" stroke="#AFE805" strokeWidth={3} dot={{ r: 4, fill: '#AFE805', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#fff', stroke: '#AFE805', strokeWidth: 2 }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             </div>
-          )}
+
+            {/* Hall of Fame / Mejores del mes */}
+            <div className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-6 flex-1 flex flex-col items-center justify-center text-center gap-3 relative overflow-hidden min-h-[140px] opacity-70 transition-opacity hover:opacity-100">
+              <div className="absolute inset-0 bg-black/20 z-0"></div>
+              <div className="w-12 h-12 rounded-full bg-white/[0.03] border border-white/[0.05] flex items-center justify-center z-10 mb-1">
+                <Star className="w-5 h-5 text-white/40" />
+              </div>
+              <h3 className="text-[1.05rem] font-bold text-white z-10 leading-none">Los mejores del mes</h3>
+              <p className="text-[0.8rem] text-white/50 max-w-[340px] z-10 leading-relaxed font-medium">
+                Próximamente. Al finalizar cada mes, destacaremos a los mejores jugadores de Prodeazo.
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     </>
