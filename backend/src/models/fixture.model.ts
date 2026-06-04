@@ -41,3 +41,13 @@ export function findFixtureStatusById(fixtureId: number) {
     .where(eq(fixtures.id, fixtureId))
     .limit(1)
 }
+
+export function findFixtureTeamNames(fixtureId: number) {
+  return db
+    .select({ homeName: homeTeam.name, awayName: awayTeam.name })
+    .from(fixtures)
+    .innerJoin(homeTeam, eq(fixtures.homeTeamId, homeTeam.id))
+    .innerJoin(awayTeam, eq(fixtures.awayTeamId, awayTeam.id))
+    .where(eq(fixtures.id, fixtureId))
+    .limit(1)
+}

@@ -74,11 +74,17 @@ For a typo in a frontend label: one session, Developer role, done.
 
 ## Session close (mandatory)
 
-At the end of any session — regardless of role — run this prompt:
+The agent runs the **Context Management Protocol** defined in `CLAUDE.md` automatically as the last step of any session that produced code changes. The user does not need to ask.
 
-> "Act as Developer. Update `CURRENT.md` with: what was done in this session, what important decision was made (if any), what the next concrete task is, and whether there is any open blocker. Use today's date."
+In short, every session-close updates the three context files in this order:
 
-This is the only mechanism that keeps the project from forgetting anything between sessions. Without this step, the next session starts blind.
+1. `CURRENT.md` — bump `## Now` date, refresh `## Next`, `## Blocked`, prepend today's line to `## Recently shipped`.
+2. `docs/changelog.md` — append anything older than ~7 days that fell off `CURRENT.md`.
+3. `ARCHITECTURE.md` — add an ADR if (and only if) an architectural decision was made.
+
+See `CLAUDE.md` → **Context Management Protocol** for the full rules (file roles, max sizes, mandatory `CURRENT.md` structure, the 7-step ritual). That document is the single source of truth — do not re-document the ritual elsewhere.
+
+Without this step, the next session starts blind.
 
 ---
 
