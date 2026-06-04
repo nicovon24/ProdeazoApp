@@ -12,6 +12,8 @@ import {
   ArrowRight,
   History,
   Target,
+  Trophy,
+  Crown,
 } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { Header } from "../../../components/layout/Header";
@@ -23,6 +25,11 @@ import {
 } from "../../../api/dashboard";
 import { fetchPredictions } from "../../../api/predictions";
 import {
+  getMyLeagues,
+  getLeagueDetail,
+  getLeagueLeaderboard,
+} from "../../../api/mini-leagues";
+import {
   PendingMatchRow,
   RecentResultRow,
   UpcomingMatchRow,
@@ -31,6 +38,16 @@ import { StatsCardSkeleton } from "@/components/skeletons/StatsCardSkeleton";
 import { MatchPanelSkeleton } from "@/components/skeletons/MatchPanelSkeleton";
 import { motion } from "framer-motion";
 import { staggerContainer, scaleIn } from "@/lib/animations";
+
+interface LeaguePreview {
+  id: string
+  name: string
+  ownerName: string
+  role: 'owner' | 'member'
+  rank: number
+  totalMembers: number
+  totalPoints: number
+}
 
 function formatCount(n: number): string {
   return n.toLocaleString("es-AR");
@@ -63,6 +80,8 @@ export default function HomePage() {
   const [panels, setPanels] = useState<DashboardPanels | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [loadingPanels, setLoadingPanels] = useState(true);
+  const [leaguePreview, setLeaguePreview] = useState<LeaguePreview | null>(null);
+  const [leaguePreviewLoading, setLeaguePreviewLoading] = useState(false);
   const [panelMatchLimit, setPanelMatchLimit] = useState(4);
 
   useEffect(() => {
@@ -85,29 +104,61 @@ export default function HomePage() {
       fetchDashboardPanels(),
       fetchPredictions().catch(() => []),
     ])
-      .then(([stats, panelData, predictions]) => {
-        if (!cancelled) {
-          const predictionsByFixture = new Map(
-            predictions.map((prediction) => [prediction.fixtureId, prediction])
-          );
-          const mergedPanelData: DashboardPanels = {
-            ...panelData,
-            upcomingWithPrediction: panelData.upcomingWithPrediction.map((match) => {
-              const prediction = predictionsByFixture.get(match.fixtureId);
-              return {
-                ...match,
-                prediction: match.prediction ?? (prediction
-                  ? {
-                      homeGoals: prediction.homeGoals,
-                      awayGoals: prediction.awayGoals,
-                    }
-                  : null),
-              };
-            }),
-          };
+      .then(async ([stats, panelData, predictions]) => {
+        if (cancelled) return;
 
-          setDashboard(stats);
-          setPanels(mergedPanelData);
+        const predictionsByFixture = new Map(
+          predictions.map((prediction) => [prediction.fixtureId, prediction])
+        );
+        const mergedPanelData: DashboardPanels = {
+          ...panelData,
+          upcomingWithPrediction: panelData.upcomingWithPrediction.map((match) => {
+            const prediction = predictionsByFixture.get(match.fixtureId);
+            return {
+              ...match,
+              prediction: match.prediction ?? (prediction
+                ? {
+                    homeGoals: prediction.homeGoals,
+                    awayGoals: prediction.awayGoals,
+                  }
+                : null),
+            };
+          }),
+        };
+
+        setDashboard(stats);
+        setPanels(mergedPanelData);
+
+        // Fetch league preview if user has leagues
+        if (stats.leagueCount > 0 && !cancelled) {
+          setLeaguePreviewLoading(true);
+          try {
+            const myLeaguesRes = await getMyLeagues();
+            if (!cancelled && myLeaguesRes.results.length > 0) {
+              const first = myLeaguesRes.results[0];
+              const [detail, lb] = await Promise.all([
+                getLeagueDetail(first.league.id).catch(() => null),
+                getLeagueLeaderboard(first.league.id).catch(() => null),
+              ]);
+              if (!cancelled) {
+                const ownerName = detail?.members.find(m => m.role === 'owner')?.name ?? '';
+                const userEntry = lb?.results.find(e => e.id === user?.id);
+                setLeaguePreview({
+                  id: first.league.id,
+                  name: first.league.name,
+                  ownerName,
+                  role: first.role,
+                  rank: userEntry?.rank ?? 0,
+                  totalMembers: lb?.count ?? 0,
+                  totalPoints: userEntry?.totalPoints ?? 0,
+                });
+              }
+            }
+          } catch {
+            // silently fail, just show empty state
+          } finally {
+            if (!cancelled) setLeaguePreviewLoading(false);
+          }
         }
       })
       .catch(() => {
@@ -185,12 +236,48 @@ export default function HomePage() {
                 Mi posición en ligas
               </div>
               <div className="flex justify-between items-start">
-                <p className="text-[0.82rem] leading-[1.45] text-white/65 max-w-[220px]">
-                  Aún no te uniste a ninguna liga.{" "}
-                  <Link href="/leagues" className="text-primary font-bold underline underline-offset-[3px] hover:text-white">
-                    ¡Busca una liga!
+                {leaguePreviewLoading ? (
+                  <div className="flex items-center gap-3 w-full py-2">
+                    <div className="w-[42px] h-[42px] bg-white/10 rounded-lg animate-pulse shrink-0" />
+                    <div className="flex flex-col gap-2 flex-1">
+                      <div className="h-3.5 w-32 bg-white/10 rounded animate-pulse" />
+                      <div className="h-3 w-20 bg-white/10 rounded animate-pulse" />
+                    </div>
+                  </div>
+                ) : leaguePreview ? (
+                  <Link
+                    href={`/leagues/${leaguePreview.id}`}
+                    className="flex items-center gap-3 no-underline w-full group"
+                  >
+                    <div className="w-[42px] h-[42px] bg-white/[0.05] rounded-lg flex items-center justify-center text-primary shrink-0"
+                      style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
+                    >
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[0.95rem] font-bold text-white truncate group-hover:text-primary transition-colors duration-200">{leaguePreview.name}</span>
+                        {leaguePreview.role === 'owner' && <Trophy className="text-[#FFCC00] w-3.5 h-3.5 shrink-0" />}
+                      </div>
+                      <div className="flex items-center gap-2 text-[0.72rem] text-white/50">
+                        <Crown className="w-3 h-3 text-[#FFCC00]" />
+                        <span>{leaguePreview.ownerName}</span>
+                        <span className="text-white/20">·</span>
+                        <span className="font-bold text-primary">#{leaguePreview.rank}</span>
+                        <span className="text-white/20">·</span>
+                        <span className="font-bold text-white/70">{leaguePreview.totalPoints} pts</span>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white transition-colors duration-200 shrink-0" />
                   </Link>
-                </p>
+                ) : (
+                  <p className="text-[0.82rem] leading-[1.45] text-white/65 max-w-[220px]">
+                    Aún no te uniste a ninguna liga.{" "}
+                    <Link href="/leagues" className="text-primary font-bold underline underline-offset-[3px] hover:text-white">
+                      ¡Busca una liga!
+                    </Link>
+                  </p>
+                )}
               </div>
               <div className="mt-auto pt-2">
                 <Link
