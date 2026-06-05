@@ -260,9 +260,9 @@ export default function HomePage() {
                         {leaguePreview.role === 'owner' && <Trophy className="text-[#FFCC00] w-3.5 h-3.5 shrink-0" />}
                       </div>
                       <div className="flex items-center gap-2 text-[0.72rem] text-white/50">
-                        <Crown className="w-3 h-3 text-[#FFCC00]" />
-                        <span>{leaguePreview.ownerName}</span>
-                        <span className="text-white/20">·</span>
+                        <Crown className="w-3 h-3 text-[#FFCC00] max-[416px]:hidden" />
+                        <span className="max-[416px]:hidden">{leaguePreview.ownerName}</span>
+                        <span className="text-white/20 max-[416px]:hidden">·</span>
                         <span className="font-bold text-primary">#{leaguePreview.rank}</span>
                         <span className="text-white/20">·</span>
                         <span className="font-bold text-white/70">{leaguePreview.totalPoints} pts</span>
@@ -331,11 +331,20 @@ export default function HomePage() {
 
         {/* Paneles centrales — datos reales */}
         {loadingPanels ? (
-          <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <MatchPanelSkeleton />
-            <MatchPanelSkeleton />
-            <MatchPanelSkeleton />
-          </div>
+          <>
+            {/* Mobile: stacked column */}
+            <div className="flex flex-col gap-4 md:hidden">
+              <MatchPanelSkeleton />
+              <MatchPanelSkeleton />
+              <MatchPanelSkeleton />
+            </div>
+            {/* Tablet / desktop: grid */}
+            <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <MatchPanelSkeleton />
+              <MatchPanelSkeleton />
+              <MatchPanelSkeleton />
+            </div>
+          </>
         ) : (
           <motion.div
             className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"

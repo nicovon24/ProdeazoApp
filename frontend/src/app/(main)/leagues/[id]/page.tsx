@@ -58,6 +58,7 @@ export default function LeagueDetailPage() {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   const [toast, setToast] = useState<ToastState | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -103,6 +104,16 @@ export default function LeagueDetailPage() {
     const timeout = window.setTimeout(() => setToast(null), 3600);
     return () => window.clearTimeout(timeout);
   }, [toast]);
+
+  // Detect mobile for responsive layout
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 768);
+    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Close modals on Escape
   useEffect(() => {
@@ -209,19 +220,31 @@ export default function LeagueDetailPage() {
       <Header
         title={detail.name}
         subtitle="Clasificación y detalles de la liga."
-        onBack={() => router.push('/leagues')}
+        onBack={isMobile ? undefined : () => router.push('/leagues')}
         backLabel="Ligas"
       />
       <main className="flex-1 px-4 md:px-8 pt-4 md:pt-6 pb-6 md:pb-8 flex flex-col gap-6 relative">
         {/* Header card */}
-        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="bg-white/[0.03] border border-white/[0.08] rounded-2xl px-5 md:px-8 py-5 md:py-7 flex flex-col gap-6">
-          {/* Top row: title + meta + actions */}
-          <div className="flex flex-col sm:flex-row items-start justify-between gap-4 flex-wrap">
+        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="relative bg-white/[0.03] border border-white/[0.08] rounded-2xl px-5 md:px-8 py-5 md:py-7 flex flex-col gap-6">
+          {/* Mobile back button — full width above everything */}
+          {isMobile && (
+            <button
+              className="w-full flex items-center gap-2 px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white/70 text-[0.95rem] font-semibold cursor-pointer transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
+              onClick={() => router.push('/leagues')}
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Volver a Ligas
+            </button>
+          )}
+
+          {/* Top row: title + meta + actions — column < 1400px, row >= 1400px */}
+          <div className="flex flex-col min-[1400px]:flex-row items-start justify-between gap-4 flex-wrap">
             <div className="flex flex-col gap-2">
               <h1 className="font-display text-[1.6rem] font-extrabold text-white leading-[1.1]">
                 {detail.name}
               </h1>
-              <div className="flex items-center gap-4 text-[0.85rem] text-white/50">
+              {/* Participants + Dueño — stacked on mobile */}
+              <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 text-[0.85rem] text-white/50">
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4" />
                   <span className="font-semibold">{memberCount} {memberCount === 1 ? 'participante' : 'participantes'}</span>
@@ -235,26 +258,7 @@ export default function LeagueDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3 max-sm:flex-col max-sm:w-full">
-              {isOwner ? (
-                <button
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.06] border border-white/[0.12] rounded-xl text-white/80 text-[0.85rem] font-semibold cursor-pointer transition-colors duration-200 hover:bg-white/[0.1] max-sm:w-full max-sm:justify-center"
-                  onClick={() => setShowSettingsModal(true)}
-                >
-                  <Settings className="w-4 h-4" />
-                  Configuración
-                </button>
-              ) : (
-                <button
-                  className="px-5 py-2.5 bg-transparent border border-white/[0.15] rounded-lg text-white/70 text-[0.9rem] font-semibold cursor-pointer transition-colors duration-200 flex items-center gap-2 hover:bg-white/[0.08]"
-                  onClick={handleLeave}
-                  disabled={actionLoading}
-                >
-                  <LogOut className="w-4 h-4" />
-                  {actionLoading ? 'Saliendo…' : 'Abandonar liga'}
-                </button>
-              )}
-              <div className="bg-gradient-to-br from-primary/[0.12] to-primary/[0.03] border border-primary/[0.25] rounded-xl px-5 py-4 flex items-center gap-4 max-sm:flex-col max-sm:w-full">
+            <div className="bg-gradient-to-br from-primary/[0.12] to-primary/[0.03] border border-primary/[0.25] rounded-xl px-5 py-4 flex items-center gap-4 max-[1400px]:flex-col max-[1400px]:w-full">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[0.8rem] font-bold text-white/80">
                     ¡Invita a tus amigos a {detail.name}!
@@ -263,9 +267,9 @@ export default function LeagueDetailPage() {
                     Compartí el código o el link con quien quieras invitar.
                   </span>
                 </div>
-                <div className="flex items-center gap-3 max-sm:w-full max-sm:flex-col">
+                <div className="flex items-center gap-3 max-[1400px]:w-full max-[1400px]:flex-col">
                   <button
-                    className="inline-flex items-center gap-2 bg-white/[0.06] border border-white/[0.12] rounded-lg px-4 py-2 font-mono text-[1.05rem] font-bold text-primary cursor-pointer transition-colors duration-200 hover:bg-primary/[0.08] max-sm:w-full max-sm:justify-center"
+                    className="inline-flex items-center gap-2 bg-white/[0.06] border border-white/[0.12] rounded-lg px-4 py-2 font-mono text-[1.05rem] font-bold text-primary cursor-pointer transition-colors duration-200 hover:bg-primary/[0.08] max-[1400px]:w-full max-[1400px]:justify-center"
                     onClick={handleCopyCode}
                     title="Copiar código"
                   >
@@ -273,7 +277,7 @@ export default function LeagueDetailPage() {
                     <Copy className="w-4 h-4 text-white/50" />
                   </button>
                   <button
-                    className="inline-flex items-center gap-2 bg-primary border-none rounded-lg px-5 py-2.5 text-black text-[0.85rem] font-bold cursor-pointer transition-opacity duration-200 hover:opacity-90 max-sm:w-full max-sm:justify-center"
+                    className="inline-flex items-center gap-2 bg-primary border-none rounded-lg px-5 py-2.5 text-black text-[0.85rem] font-bold cursor-pointer transition-opacity duration-200 hover:opacity-90 max-[1400px]:w-full max-[1400px]:justify-center"
                     onClick={handleCopyInvite}
                   >
                     <LinkIcon className="w-4 h-4" />
@@ -282,7 +286,17 @@ export default function LeagueDetailPage() {
                 </div>
               </div>
             </div>
-          </div>
+
+          {/* Config button — full width below everything on < 1400px, auto-width right-aligned on >= 1400px */}
+          {isOwner && (
+            <button
+              className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.06] border border-white/[0.12] rounded-xl text-white/80 text-[0.85rem] font-semibold cursor-pointer transition-colors duration-200 hover:bg-white/[0.1] w-full min-[1400px]:w-auto min-[1400px]:self-end"
+              onClick={() => setShowSettingsModal(true)}
+            >
+              <Settings className="w-4 h-4" />
+              Configuración
+            </button>
+          )}
         </motion.div>
 
         {/* Ranking table */}
@@ -292,11 +306,10 @@ export default function LeagueDetailPage() {
           </div>
 
           <div className="overflow-hidden">
-          <div className="min-w-[360px]">
-          <div className="grid [grid-template-columns:64px_1fr_120px] px-4 md:px-6 py-2.5 text-[0.65rem] font-bold text-white/35 uppercase tracking-[0.05em] border-b border-white/[0.04]">
+          <div className="grid [grid-template-columns:48px_1fr_60px] px-4 md:px-6 py-2.5 text-[0.65rem] font-bold text-white/35 uppercase tracking-[0.05em] border-b border-white/[0.04]">
             <div>POS</div>
             <div>PARTICIPANTE</div>
-            <div style={{ textAlign: 'right' }}>PUNTOS</div>
+            <div className="text-right">PUNTOS</div>
           </div>
 
           {leaderboard.map((entry) => {
@@ -313,34 +326,48 @@ export default function LeagueDetailPage() {
                 key={entry.id}
                 variants={fadeInUp}
                 className={clsx(
-                  "grid [grid-template-columns:64px_1fr_120px] px-4 md:px-6 py-3.5 items-center border-b border-white/[0.02] last:border-b-0 transition-colors duration-[150ms] hover:bg-white/[0.03]",
-                  isCurrentUser ? "bg-primary/[0.05] hover:bg-primary/[0.08]" : ""
+                  "grid [grid-template-columns:48px_1fr_60px] px-4 py-3 items-center border-b transition-colors duration-150",
+                  isCurrentUser
+                    ? "bg-primary/[0.06] border-primary/[0.15] hover:bg-primary/[0.08]"
+                    : "border-white/[0.03] hover:bg-white/[0.03]"
                 )}
               >
-                <div className={clsx("font-display text-[1.2rem] font-extrabold", posColor)}>
+                <div className={clsx("font-display text-[1rem] font-extrabold", posColor)}>
                   {rank}
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/50 text-[0.75rem] font-semibold overflow-hidden shrink-0">
+                <div className="flex items-center gap-2 min-w-0 pr-2">
+                  <div
+                    className={clsx(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-[0.65rem] font-semibold overflow-hidden shrink-0",
+                      isCurrentUser ? "text-black" : "bg-white/10 text-white/50"
+                    )}
+                    style={isCurrentUser ? { backgroundColor: 'var(--color-primary)' } : undefined}
+                  >
                     {entry.avatar ? (
                       <img src={entry.avatar} alt={entry.name} className="w-full h-full object-cover" />
                     ) : (
                       getInitials(entry.name)
                     )}
                   </div>
-                  <span className="text-[0.95rem] font-semibold text-white">{entry.name}</span>
-                  {memberRole === 'owner' && (
-                    <span className="text-[0.6rem] font-bold bg-[rgba(255,204,0,0.15)] text-[#FFCC00] border border-[rgba(255,204,0,0.3)] px-[7px] py-[2px] rounded uppercase tracking-[0.04em]">
-                      Dueño
+                  <div className="flex flex-col min-[440px]:flex-row min-[440px]:items-center gap-0.5 min-[440px]:gap-2 min-w-0">
+                    <span className={clsx("text-[0.85rem] font-semibold truncate", isCurrentUser ? "text-white" : "text-white/90")}>
+                      {entry.name}
                     </span>
-                  )}
-                  {isCurrentUser && (
-                    <span className="text-[0.6rem] font-bold bg-primary text-black px-[7px] py-[2px] rounded uppercase tracking-[0.04em]">
-                      TÚ
-                    </span>
-                  )}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {memberRole === 'owner' && (
+                        <span className="text-[0.55rem] font-extrabold bg-[rgba(255,204,0,0.15)] text-[#FFCC00] border border-[rgba(255,204,0,0.3)] px-1.5 py-[2px] rounded uppercase shrink-0">
+                          Dueño
+                        </span>
+                      )}
+                      {isCurrentUser && (
+                        <span className="bg-primary text-black text-[0.55rem] font-extrabold px-1.5 py-[2px] rounded uppercase shrink-0">
+                          TÚ
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="font-display text-[1.1rem] font-bold text-white text-right">
+                <div className="font-display text-[0.95rem] font-bold text-white text-right">
                   {entry.totalPoints.toLocaleString('es-AR')}
                 </div>
               </motion.div>
@@ -352,7 +379,6 @@ export default function LeagueDetailPage() {
               Sin datos de clasificación todavía.
             </motion.div>
           )}
-          </div>
           </div>
         </motion.div>
 

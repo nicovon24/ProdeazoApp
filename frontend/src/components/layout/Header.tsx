@@ -124,9 +124,9 @@ export function Header({ title, subtitle, onBack, backLabel }: HeaderProps) {
         )}
       </div>
 
-      {/* Help button — non-interactive, coming soon */}
+      {/* Help button — hidden on < 768px */}
       <div
-        className="relative hidden sm:flex items-center justify-center gap-1.5 px-3 py-2 rounded-[10px] text-white/30 text-[0.85rem] font-medium cursor-default select-none"
+        className="relative hidden md:flex items-center justify-center gap-1.5 px-3 py-2 rounded-[10px] text-white/30 text-[0.85rem] font-medium cursor-default select-none"
         title="Ayuda — Próximamente"
       >
         <HelpCircle className="w-5 h-5" />
@@ -163,7 +163,11 @@ export function Header({ title, subtitle, onBack, backLabel }: HeaderProps) {
               {initials}
             </span>
           )}
-          <span className="hidden sm:block text-[0.875rem] font-semibold max-w-[120px] truncate">
+          {/* First name only on mobile (< 768px); full name on larger */}
+          <span className="hidden sm:block md:hidden text-[0.875rem] font-semibold max-w-[120px] truncate">
+            {user?.name?.split(" ")[0] ?? "Usuario"}
+          </span>
+          <span className="hidden md:block text-[0.875rem] font-semibold max-w-[120px] truncate">
             {user?.name ?? "Usuario"}
           </span>
           <ChevronDown

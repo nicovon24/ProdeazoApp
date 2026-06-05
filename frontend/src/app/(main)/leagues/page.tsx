@@ -242,27 +242,29 @@ export default function LeaguesPage() {
         subtitle="Competí contra tus amigos y otros participantes."
       />
       <main className="flex-1 px-4 md:px-8 pt-4 md:pt-6 pb-6 md:pb-8 flex flex-col">
-        {/* Top Stat Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { icon: <Users className="w-6 h-6" />, label: "Ligas Activas", value: loading ? '—' : String(myLeagues.length), sub: null },
-            { icon: <Trophy className="w-6 h-6" />, label: "Posición Promedio", value: loading ? '—' : avgPosition !== null ? `#${avgPosition}` : '—', sub: null },
-            { icon: <Star className="w-6 h-6" />, label: "Puntos en Ligas", value: "—", sub: null },
-            { icon: <Target className="w-6 h-6" />, label: "Precisión Promedio", value: "—", sub: null },
-          ].map(({ icon, label, value, sub }) => (
-            <div key={label} className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-5 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-white/[0.05] flex items-center justify-center text-primary">
-                {icon}
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[0.7rem] font-bold uppercase text-white/60 tracking-[0.02em]">{label}</span>
-                <div className="flex items-baseline gap-2">
-                  <span className="font-display text-[1.8rem] font-extrabold text-white leading-none">{value}</span>
-                  {sub && <span className="text-[0.75rem] text-white/50">{sub}</span>}
+        {/* Top Stat Cards — moved below CTAs on mobile via order-last */}
+        <div className="order-last lg:order-none mt-6 lg:mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 mb-8">
+            {[
+              { icon: <Users className="w-5 h-5 md:w-6 md:h-6" />, label: "Ligas Activas", value: loading ? '—' : String(myLeagues.length), sub: null },
+              { icon: <Trophy className="w-5 h-5 md:w-6 md:h-6" />, label: "Posición Promedio", value: loading ? '—' : avgPosition !== null ? `#${avgPosition}` : '—', sub: null },
+              { icon: <Star className="w-5 h-5 md:w-6 md:h-6" />, label: "Puntos en Ligas", value: "—", sub: null },
+              { icon: <Target className="w-5 h-5 md:w-6 md:h-6" />, label: "Precisión Promedio", value: "—", sub: null },
+            ].map(({ icon, label, value, sub }) => (
+              <div key={label} className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 md:p-5 flex items-center gap-3 md:gap-4">
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white/[0.05] flex items-center justify-center text-primary shrink-0">
+                  {icon}
+                </div>
+                <div className="flex flex-row md:flex-col justify-between md:justify-start items-baseline md:items-start gap-x-2 md:gap-1 min-w-0 flex-1 break-words">
+                  <span className="text-[0.65rem] md:text-[0.7rem] font-bold uppercase text-white/60 tracking-[0.02em]">{label}</span>
+                  <div className="flex items-baseline gap-2 shrink-0">
+                    <span className="font-display text-[1.15rem] md:text-[1.8rem] font-extrabold text-white leading-none">{value}</span>
+                    {sub && <span className="text-[0.75rem] text-white/50">{sub}</span>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Navigation Tabs */}
@@ -273,6 +275,7 @@ export default function LeaguesPage() {
               type="button"
               className={clsx(
                 "bg-transparent border-none text-[0.95rem] font-semibold py-3 cursor-pointer relative transition-colors duration-200 whitespace-nowrap",
+                "flex-1 md:flex-none text-center md:text-left",
                 activeTab === tab
                   ? "text-primary tab-btn-active-line"
                   : "text-white/50 hover:text-white/80"
@@ -288,7 +291,7 @@ export default function LeaguesPage() {
           <div className="flex flex-col lg:flex-row gap-6 items-start flex-1">
             {/* Left Col - My Leagues */}
             <div className="flex-[2] flex flex-col gap-6 w-full flex-1">
-              <h2 className="text-[1.1rem] font-bold text-white">Ligas en las que participo</h2>
+              <h2 className="text-[1.1rem] font-bold text-white hidden md:block">Ligas en las que participo</h2>
 
               <div className="flex flex-col gap-2 flex-1">
                 {loading ? (
@@ -306,25 +309,44 @@ export default function LeaguesPage() {
                   {myLeagues.map(({ league, role }) => {
                     const pos = leaguePositions[league.id];
                     return (
-                      <motion.div key={league.id} variants={fadeInUp} className="flex items-center gap-5 px-5 py-4 bg-white/[0.03] border border-white/[0.08] rounded-xl transition-[border-color] duration-200 hover:border-white/20 cursor-pointer" onClick={() => router.push('/leagues/' + league.id)}>
+                      <motion.div key={league.id} variants={fadeInUp} className="relative flex items-start gap-4 md:items-center md:gap-5 px-4 md:px-5 py-4 bg-white/[0.03] border border-white/[0.08] rounded-xl transition-[border-color] duration-200 hover:border-white/20 cursor-pointer" onClick={() => router.push('/leagues/' + league.id)}>
+                        {/* Mobile arrow top-right */}
+                        <ArrowRight className="absolute top-3 right-3 w-4 h-4 text-white/30 md:hidden" />
+
                         <div
-                          className="w-[52px] h-[52px] bg-white/[0.05] rounded-lg flex items-center justify-center text-primary"
+                          className="w-[44px] md:w-[52px] h-[44px] md:h-[52px] shrink-0 bg-white/[0.05] rounded-lg flex items-center justify-center text-primary"
                           style={{ clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)' }}
                         >
-                          <Users className="w-6 h-6" />
+                          <Users className="w-5 h-5 md:w-6 md:h-6" />
                         </div>
-                        <div className="flex-[2] flex flex-col gap-1">
+
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-[1.05rem] font-bold text-white">{league.name}</span>
-                            {role === 'owner' && <Trophy className="text-[#FFCC00] w-4 h-4" />}
+                            <span className="text-[0.95rem] md:text-[1.05rem] font-bold text-white truncate">{league.name}</span>
+                            {role === 'owner' && <Trophy className="text-[#FFCC00] w-4 h-4 shrink-0" />}
                           </div>
-                          <span className="text-[0.75rem] text-white/50">
+
+                          {/* Mobile info row */}
+                          <div className="flex md:hidden flex-wrap items-center gap-x-1.5 mt-0.5 text-[0.7rem] text-white/50">
+                            <span>{role === 'owner' ? 'Propietario' : 'Miembro'}</span>
+                            {pos && (
+                              <>
+                                <span>·</span>
+                                <span>{pos.totalMembers} {pos.totalMembers === 1 ? 'participante' : 'participantes'}</span>
+                                <span>·</span>
+                                <span className="font-bold text-white/70">{pos.totalPoints} pts</span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Desktop role */}
+                          <span className="hidden md:block text-[0.75rem] text-white/50 mt-0.5">
                             {role === 'owner' ? 'Propietario' : 'Miembro'}
                           </span>
                         </div>
 
                         {pos && (
-                          <div className="flex flex-col items-center mr-3 gap-1">
+                          <div className="hidden md:flex flex-col items-center mr-3 gap-1">
                             <span className="font-display text-[1.2rem] font-extrabold text-primary">#{pos.rank}</span>
                             <span className="text-[0.6rem] text-white/45 uppercase font-bold">{pos.totalMembers} {pos.totalMembers === 1 ? 'PARTICIPANTE' : 'PARTICIPANTES'}</span>
                             <span className="text-[0.75rem] font-bold text-white/70">{pos.totalPoints} pts</span>
@@ -332,7 +354,7 @@ export default function LeaguesPage() {
                         )}
 
                         <button
-                          className="px-4 py-2 rounded-lg bg-transparent border border-primary/30 text-primary text-[0.8rem] font-semibold cursor-pointer transition-all duration-200 hover:bg-primary/10"
+                          className="hidden md:flex px-4 py-2 rounded-lg bg-transparent border border-primary/30 text-primary text-[0.8rem] font-semibold cursor-pointer transition-all duration-200 hover:bg-primary/10"
                           onClick={(e) => { e.stopPropagation(); router.push('/leagues/' + league.id); }}
                         >
                           Ver liga

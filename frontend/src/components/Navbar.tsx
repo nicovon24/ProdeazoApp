@@ -23,7 +23,7 @@ export function Navbar({ variant = 'landing', position = 'relative' }: NavbarPro
 
   return (
     <header className={`${position} ${position === 'absolute' ? 'top-0 left-0 right-0' : ''} z-50 w-full shrink-0 border-b border-white/10 bg-transparent`}>
-      <div className={`mx-auto flex h-16 w-full items-center ${isAuth ? '' : 'justify-between'} gap-2 px-3 sm:h-[4.5rem] sm:gap-4 sm:px-6`}>
+      <div className={`mx-auto flex h-16 w-full items-center ${isAuth ? 'justify-center sm:justify-start' : 'justify-between'} gap-2 px-3 sm:h-[4.5rem] sm:gap-4 sm:px-6`}>
         <Logo simplified={variant === 'landing'} />
 
         {!isAuth && (

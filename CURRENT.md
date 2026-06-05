@@ -6,10 +6,10 @@
 
 ---
 
-## Now (last updated: 2026-06-02)
+## Now (last updated: 2026-06-04)
 
-- Branch: `feat/functionality-3` (based on `feat/functionality-2`, started at commit `e150800`)
-- Working on: Context management protocol refactor — no feature work in flight.
+- Branch: `feat/functionality-3`
+- Working on: Rankings page polish — error handling, 2-column layout with top 30 sidebar.
 
 ---
 
@@ -32,5 +32,6 @@ Then: merge `feat/functionality-3` → `master` once confirmed stable.
 
 ## Recently shipped (last ~7 days)
 
+- 2026-06-04 — Rankings page: error handling (`.catch()` guards), 2-col layout (top 30 sidebar + chart + "Los mejores del mes" placeholder), removed pre-tournament empty state.
 - 2026-06-02 — Context management protocol: mandatory ritual added to `CLAUDE.md`, `docs/changelog.md` created, `CURRENT.md` compacted.
 - 2026-06-02 — Fixture page polish sprint shipped on `feat/functionality-3` (see `docs/changelog.md` for full breakdown).
