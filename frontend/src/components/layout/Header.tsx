@@ -116,7 +116,7 @@ export function Header({ title, subtitle, onBack, backLabel }: HeaderProps) {
 
       {/* Page title */}
       <div className="mr-auto flex flex-col gap-0.5 min-w-0">
-        <h1 className="font-display text-[1.25rem] md:text-[1.75rem] font-bold text-white leading-[1.2] truncate">
+        <h1 className="font-display text-[1.25rem] md:text-[1.75rem] font-bold text-white leading-[1.2] truncate pb-0.5">
           {title}
         </h1>
         {subtitle && (

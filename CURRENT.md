@@ -6,10 +6,10 @@
 
 ---
 
-## Now (last updated: 2026-06-04)
+## Now (last updated: 2026-06-05)
 
 - Branch: `feat/functionality-3`
-- Working on: Rankings page polish — error handling, 2-column layout with top 30 sidebar.
+- Working on: Fix `leaveLeague()` endpoint mismatch — frontend calls `/members/me` but backend exposes `DELETE /:id/leave`.
 
 ---
 
@@ -32,6 +32,6 @@ Then: merge `feat/functionality-3` → `master` once confirmed stable.
 
 ## Recently shipped (last ~7 days)
 
+- 2026-06-05 — StatsCardSkeleton responsive fix: changed from inline `grid-template-columns: repeat(3, 1fr)` to Tailwind `grid-cols-1 sm:grid-cols-3` so cards stack vertically on mobile.
+- 2026-06-05 — Bracket placeholder handling: added `isBracketPlaceholder` / `fixtureHasBracketSlot` utility to detect knockout matches with undetermined teams (1C, 2F, W74, etc.). Home page filters them from pending panels and count. Predictions page shows them darkened with "A confirmar" label, locked to prevent predictions, and excluded from pending/saved counts. Fixture page unaffected.
 - 2026-06-04 — Rankings page: error handling (`.catch()` guards), 2-col layout (top 30 sidebar + chart + "Los mejores del mes" placeholder), removed pre-tournament empty state.
-- 2026-06-02 — Context management protocol: mandatory ritual added to `CLAUDE.md`, `docs/changelog.md` created, `CURRENT.md` compacted.
-- 2026-06-02 — Fixture page polish sprint shipped on `feat/functionality-3` (see `docs/changelog.md` for full breakdown).

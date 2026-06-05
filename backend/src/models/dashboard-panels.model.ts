@@ -9,6 +9,9 @@ const awayTeam = alias(teams, 'away_team')
 
 const FINISHED_STATUSES = [FixtureStatus.Finished, 'ft'] as const
 const UPCOMING_STATUSES = [FixtureStatus.NotStarted, 'ns'] as const
+
+// Mirrors isLikelyBracketPlaceholder() from providers/participant-names.ts as a Postgres regex
+const PLACEHOLDER_REGEX = '^([WL]\\d+|[12][A-L]|[A-L][12]|[A-L]\\d|\\d[A-Z](/\\d[A-Z])+)$'
 const ACTIVE_WITH_PRED_STATUSES = [
   FixtureStatus.InProgress,
   FixtureStatus.NotStarted,
@@ -80,7 +83,7 @@ export async function findUserRecentFinishedPredictions(
     .limit(limit)
 }
 
-export async function findUserUpcomingPredictedFixtures(userId: string): Promise<PanelRow[]> {
+export async function findUserUpcomingPredictedFixtures(userId: string, maxResults = 3): Promise<PanelRow[]> {
   const rows = await db
     .select(baseSelect())
     .from(predictions)
@@ -102,7 +105,7 @@ export async function findUserUpcomingPredictedFixtures(userId: string): Promise
       if (bLive && !aLive) return 1
       return new Date(a.date).getTime() - new Date(b.date).getTime()
     })
-    .slice(0, 3)
+    .slice(0, maxResults)
 }
 
 export async function findUserPendingFixtures(userId: string, limit = 5): Promise<Omit<PanelRow, 'homeGoals' | 'awayGoals' | 'points'>[]> {
@@ -131,7 +134,14 @@ export async function findUserPendingFixtures(userId: string, limit = 5): Promis
       predictions,
       and(eq(predictions.fixtureId, fixtures.id), eq(predictions.userId, userId))
     )
-    .where(and(inArray(fixtures.status, [...UPCOMING_STATUSES]), isNull(predictions.id)))
+    .where(
+      and(
+        inArray(fixtures.status, [...UPCOMING_STATUSES]),
+        isNull(predictions.id),
+        sql`coalesce(${homeTeam.name}, '') !~* ${PLACEHOLDER_REGEX}`,
+        sql`coalesce(${awayTeam.name}, '') !~* ${PLACEHOLDER_REGEX}`,
+      )
+    )
     .orderBy(asc(fixtures.date))
     .limit(limit)
 
@@ -142,11 +152,20 @@ export async function countUserPendingFixtures(userId: string): Promise<number> 
   const result = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(fixtures)
+    .leftJoin(homeTeam, eq(fixtures.homeTeamId, homeTeam.id))
+    .leftJoin(awayTeam, eq(fixtures.awayTeamId, awayTeam.id))
     .leftJoin(
       predictions,
       and(eq(predictions.fixtureId, fixtures.id), eq(predictions.userId, userId))
     )
-    .where(and(inArray(fixtures.status, [...UPCOMING_STATUSES]), isNull(predictions.id)))
+    .where(
+      and(
+        inArray(fixtures.status, [...UPCOMING_STATUSES]),
+        isNull(predictions.id),
+        sql`coalesce(${homeTeam.name}, '') !~* ${PLACEHOLDER_REGEX}`,
+        sql`coalesce(${awayTeam.name}, '') !~* ${PLACEHOLDER_REGEX}`,
+      )
+    )
 
   return result[0].count
 }

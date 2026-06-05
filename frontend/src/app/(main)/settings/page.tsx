@@ -305,7 +305,7 @@ export default function SettingsPage() {
   return (
     <>
       <Header
-        title="Configuración de cuenta"
+        title="Configuración"
         subtitle="Gestioná tu información personal y las preferencias de tu cuenta."
       />
 

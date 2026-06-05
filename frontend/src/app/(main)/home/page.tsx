@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Globe,
@@ -38,6 +38,7 @@ import { StatsCardSkeleton } from "@/components/skeletons/StatsCardSkeleton";
 import { MatchPanelSkeleton } from "@/components/skeletons/MatchPanelSkeleton";
 import { motion } from "framer-motion";
 import { staggerContainer, scaleIn } from "@/lib/animations";
+import { fixtureHasBracketSlot } from "@/lib/fixture-utils";
 
 interface LeaguePreview {
   id: string
@@ -179,12 +180,17 @@ export default function HomePage() {
     };
   }, []);
 
+  const bracketFilteredPendingPredictions = useMemo(() => {
+    return (panels?.pendingPredictions ?? []).filter(m => !fixtureHasBracketSlot(m));
+  }, [panels?.pendingPredictions]);
+
   const participantCount = dashboard?.participantCount ?? 0;
   const globalRank = dashboard?.globalRank ?? null;
   const totalPoints = dashboard?.totalPoints ?? 0;
   const recentResults = panels?.recentResults.slice(0, panelMatchLimit) ?? [];
-  const upcomingWithPrediction = panels?.upcomingWithPrediction.slice(0, panelMatchLimit) ?? [];
-  const pendingPredictions = panels?.pendingPredictions.slice(0, panelMatchLimit) ?? [];
+  const upcomingWithPrediction = panels?.upcomingWithPrediction.slice(0, 5) ?? [];
+  const pendingPredictionsCount = panels?.pendingPredictionsTotal ?? 0;
+  const pendingPredictions = bracketFilteredPendingPredictions.slice(0, 6);
 
   return (
     <>
@@ -430,9 +436,9 @@ export default function HomePage() {
               <div className="flex-none px-3 pt-3 pb-2.5 flex items-center gap-2 text-[0.72rem] font-bold uppercase text-white border-b border-white/[0.05]">
                 <Hourglass className="w-4 h-4 text-primary" />
                 Pendientes de predicción
-                {(panels?.pendingPredictionsTotal ?? 0) > 0 && (
+                {pendingPredictionsCount > 0 && (
                   <span className="bg-[#D50204] text-white text-[0.6rem] font-bold h-4.5 min-w-[18px] rounded-full flex items-center justify-center px-1.5 ml-auto">
-                    {panels!.pendingPredictionsTotal}
+                    {pendingPredictionsCount}
                   </span>
                 )}
               </div>
@@ -451,14 +457,14 @@ export default function HomePage() {
                 )}
               </div>
               {/* Always-visible footer button for Pendientes */}
-              {(panels?.pendingPredictions.length ?? 0) > 0 && (
+              {pendingPredictionsCount > 0 && (
                 <div className="flex-none p-2.5 border-t border-white/[0.05]">
                   <Link
                     href="/predictions?tab=pending"
                     className="w-full block text-center p-2 min-h-[34px] leading-[18px] bg-white/[0.03] border border-white/[0.06] rounded-lg text-white text-[0.75rem] font-semibold no-underline hover:bg-white/[0.08] transition-all duration-300"
                   >
-                    {(panels?.pendingPredictionsTotal ?? 0) > 4
-                      ? `Ver todos los pendientes (${panels!.pendingPredictionsTotal})`
+                    {pendingPredictionsCount > 4
+                      ? `Ver todos los pendientes (${pendingPredictionsCount})`
                       : 'Ver mis pendientes'}
                   </Link>
                 </div>

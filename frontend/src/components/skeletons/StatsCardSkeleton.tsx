@@ -8,14 +8,7 @@ import { Skeleton } from "../ui/Skeleton"
  */
 export function StatsCardSkeleton() {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gap: "1rem",
-        width: "100%",
-      }}
-    >
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
       {Array.from({ length: 3 }).map((_, i) => (
         <div
           key={i}

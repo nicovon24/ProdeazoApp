@@ -34,6 +34,7 @@ import {
   formatFixturePhase,
   getPredictionBadgeTone,
   sortFixtures,
+  fixtureHasBracketSlot,
 } from "../../../lib/fixture-utils";
 import { getCountryName } from "../../../lib/i18n/countries";
 import { getTournamentIconUrl } from "../../../lib/tournament-icons";
@@ -97,6 +98,7 @@ interface MatchRow {
   originalAwayPred: number | null;
   locked: boolean;
   hasSavedPrediction: boolean;
+  isBracketSlot: boolean;
 }
 
 const FILTERS: { id: PredictionFilter; label: string }[] = [
@@ -170,6 +172,7 @@ function SectionIcon({ title }: { title: string }) {
   if (title === "Predicciones hechas") return <CheckCircle2 className="h-5 w-5 text-primary -ml-1" />;
   if (title === "Predicciones pendientes") return <Clock3 className="h-5 w-5 text-primary -ml-1" />;
   if (title === "Resultados de predicciones") return <ListChecks className="h-5 w-5 text-primary -ml-1" />;
+  if (title === "Cruces por definir") return <span className="text-white/40 text-[1.1rem] font-bold -ml-1 leading-none">—</span>;
   return <Trophy className="h-5 w-5 text-primary -ml-1" />;
 }
 
@@ -212,6 +215,7 @@ export default function PredictionsPage() {
     return sortFixtures(fixtures, "recommended").map(f => {
       const pred = predMap.get(f.id);
       const date = f.date ? new Date(f.date) : null;
+      const isBracketSlot = fixtureHasBracketSlot(f);
 
       return {
         fixture: f,
@@ -225,8 +229,9 @@ export default function PredictionsPage() {
         awayPred: pred?.awayGoals ?? null,
         originalHomePred: pred?.homeGoals ?? null,
         originalAwayPred: pred?.awayGoals ?? null,
-        locked: !isPredictionOpen(f.status),
+        locked: !isPredictionOpen(f.status) || isBracketSlot,
         hasSavedPrediction: Boolean(pred),
+        isBracketSlot,
       };
     });
   }, []);
@@ -335,18 +340,25 @@ export default function PredictionsPage() {
   }, [dateFilteredMatches, normalizedSearchQuery]);
 
   const sectionRows = useMemo(() => {
-    const saved = searchedMatches.filter(m => !m.locked && m.hasSavedPrediction);
-    const pending = searchedMatches.filter(m => !m.locked && !m.hasSavedPrediction);
-    const results = searchedMatches.filter(m => m.locked && m.hasSavedPrediction);
+    const bracket = searchedMatches.filter(m => m.isBracketSlot);
+    const nonBracket = searchedMatches.filter(m => !m.isBracketSlot);
+    const saved = nonBracket.filter(m => !m.locked && m.hasSavedPrediction);
+    const pending = nonBracket.filter(m => !m.locked && !m.hasSavedPrediction);
+    const results = nonBracket.filter(m => m.locked && m.hasSavedPrediction);
+
+    const bracketSection = bracket.length
+      ? [{ title: "Cruces por definir", rows: bracket }]
+      : [];
 
     if (filter === "saved") return [{ title: "Predicciones hechas", rows: saved }];
-    if (filter === "pending") return [{ title: "Predicciones pendientes", rows: pending }];
+    if (filter === "pending") return [{ title: "Predicciones pendientes", rows: pending }, ...bracketSection];
     if (filter === "results") return [{ title: "Resultados de predicciones", rows: results }];
 
     return [
       { title: "Predicciones hechas", rows: saved },
       { title: "Predicciones pendientes", rows: pending },
       { title: "Resultados de predicciones", rows: results },
+      ...bracketSection,
     ];
   }, [searchedMatches, filter]);
 
@@ -363,9 +375,9 @@ export default function PredictionsPage() {
     (m.homePred === null || m.awayPred === null)
   );
 
-  const savedCount = matches.filter(m => m.hasSavedPrediction && !m.locked).length;
-  const pendingCount = matches.filter(m => !m.locked && !m.hasSavedPrediction).length;
-  const resultsCount = matches.filter(m => m.locked && m.hasSavedPrediction).length;
+  const savedCount = matches.filter(m => m.hasSavedPrediction && !m.locked && !m.isBracketSlot).length;
+  const pendingCount = matches.filter(m => !m.locked && !m.hasSavedPrediction && !m.isBracketSlot).length;
+  const resultsCount = matches.filter(m => m.locked && m.hasSavedPrediction && !m.isBracketSlot).length;
   const canSave = validDirtyRows.length > 0 && !saving;
   const hasDirtyRows = matches.some(m => !m.locked && hasChanged(m));
 
@@ -485,7 +497,56 @@ export default function PredictionsPage() {
     );
   };
 
-  const renderRow = (row: MatchRow) => (
+  const renderRow = (row: MatchRow) => {
+    if (row.isBracketSlot) {
+      return (
+        <div
+          key={row.fixtureId}
+          className="grid gap-4 items-center min-h-[92px] px-4 py-3.5 bg-white/[0.015] border border-white/[0.03] rounded-lg mb-1 opacity-50 [grid-template-columns:100px_minmax(0,1fr)_150px] max-[760px]:grid-cols-1 max-[760px]:gap-3"
+        >
+          <div className="flex flex-col gap-[5px] max-[760px]:items-center">
+            <span className="text-[0.95rem] font-extrabold text-white/50">{row.time}</span>
+            <span className="text-[0.66rem] text-white/40 leading-[1.25] font-bold">{row.phase}</span>
+          </div>
+
+          <div className="grid items-center gap-[18px] [grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)] max-[760px]:gap-2">
+            <div className="flex flex-col items-center gap-1 justify-self-end w-[110px] max-[760px]:w-[80px]">
+              <div className="w-[30px] h-[30px] flex items-center justify-center flex-shrink-0">
+                <TeamLogo name={row.fixture.homeTeam?.name} logoUrl={row.fixture.homeTeam?.logoUrl} size={30} />
+              </div>
+              <div className="h-[34px] w-full overflow-hidden flex items-center justify-center">
+                <span className="text-xs text-center leading-tight font-bold text-white/40 line-clamp-2 w-full">
+                  {getCountryName(row.fixture.homeTeam?.name)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 min-w-[100px] max-[760px]:min-w-0 max-[760px]:gap-1.5">
+              <span className="text-[0.72rem] font-black text-white/30 text-center leading-tight px-2">A confirmar</span>
+            </div>
+
+            <div className="flex flex-col items-center gap-1 justify-self-start w-[110px] max-[760px]:w-[80px]">
+              <div className="w-[30px] h-[30px] flex items-center justify-center flex-shrink-0">
+                <TeamLogo name={row.fixture.awayTeam?.name} logoUrl={row.fixture.awayTeam?.logoUrl} size={30} />
+              </div>
+              <div className="h-[34px] w-full overflow-hidden flex items-center justify-center">
+                <span className="text-xs text-center leading-tight font-bold text-white/40 line-clamp-2 w-full">
+                  {getCountryName(row.fixture.awayTeam?.name)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end justify-center gap-2 max-[760px]:items-center max-[760px]:flex-row max-[760px]:justify-center">
+            <span className="inline-flex items-center justify-center min-w-[86px] px-2.5 py-1.5 rounded-md text-[0.64rem] font-black uppercase bg-white/[0.03] border border-white/[0.06] text-white/35">
+              Por definir
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
     <div
       key={row.fixtureId}
       className={clsx(
@@ -546,7 +607,8 @@ export default function PredictionsPage() {
         {renderResult(row)}
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <>

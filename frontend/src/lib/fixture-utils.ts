@@ -111,6 +111,28 @@ export function sortRoundsPhases(rounds: string[]): string[] {
   return [...rounds].sort((a, b) => getPhaseSortOrder(a) - getPhaseSortOrder(b))
 }
 
+/**
+ * Detecta si un nombre de equipo es un placeholder de bracket
+ * (ej: "1C", "2F", "W74", "3A/3B/3C/3D") — no es un equipo real
+ * hasta que el torneo avance y se definan los cruces.
+ */
+export function isBracketPlaceholder(name: string | null | undefined): boolean {
+  if (!name) return false
+  const n = name.trim()
+  if (n.length < 2) return false
+  if (/\d[A-Z]\/\d[A-Z]/i.test(n)) return true
+  if (/^W\d+$/i.test(n)) return true
+  if (/^L\d+$/i.test(n)) return true
+  if (/^[12][A-L]$/i.test(n)) return true
+  if (/^[A-L][12]$/i.test(n)) return true
+  if (/^[A-L]\d$/i.test(n)) return true
+  return false
+}
+
+export function fixtureHasBracketSlot(fixture: { homeTeam?: { name?: string | null } | null; awayTeam?: { name?: string | null } | null }): boolean {
+  return isBracketPlaceholder(fixture.homeTeam?.name) || isBracketPlaceholder(fixture.awayTeam?.name)
+}
+
 export function formatRoundName(round: string): string {
   const translations: Record<string, string> = {
     'Group Stage': 'Fase de grupos',
