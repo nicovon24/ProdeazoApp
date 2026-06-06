@@ -4,6 +4,7 @@ import { fixtures, predictions } from '../db/schema'
 import { eq, inArray } from 'drizzle-orm'
 import { fetchScoresForDate } from '../services/bzzoiro.service'
 import { calculatePredictionPoints } from '../services/scoring'
+import { maybeRunFixtureMetaSync } from './fixture-meta-sync'
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
@@ -100,6 +101,7 @@ export async function runScoreSync(): Promise<void> {
         newStatus === FixtureStatus.Finished && !isFinishedStoredStatus(dbFixture.status)
       if (transitioningToFinished && homeScore !== null && awayScore !== null) {
         await scorePredictions(id, homeScore, awayScore)
+        await maybeRunFixtureMetaSync()
       }
     }
 

@@ -62,6 +62,65 @@ SPEC → PLAN → TEST → CODE → REVIEW → PR (human)
 
 Each step produces a written artifact. Deployment is continuous: every completed task on `master` is potentially shippable.
 
+## Git Workflow
+
+**Never commit or push until the user explicitly confirms they have tested the changes or the user orders to push it.**
+
+After finishing an implementation, report what changed and wait for the user's go-ahead before running any `git commit` or `git push`. This applies to all branches and all tasks, no exceptions.
+
+---
+
+## Context Management Protocol (MANDATORY)
+
+Context for this project lives in **three files only**. Do not invent new ones. Do not duplicate information across them.
+
+| File | Purpose | Lifetime | Max size |
+|------|---------|----------|----------|
+| `CLAUDE.md` | Permanent rules, invariants, stack | Changes when architecture changes | ~150 lines |
+| `CURRENT.md` | Live state: now / next / blocked / recent | Rewritten every session | ~80 lines |
+| `docs/changelog.md` | Historical record of shipped work | Append-only, grows forever | unlimited |
+
+Architectural decisions (the "why") live in `ARCHITECTURE.md` as ADRs — separate from the three above.
+
+### CURRENT.md structure (do not deviate)
+
+`CURRENT.md` must have exactly these four sections, in this order:
+
+```markdown
+# CURRENT.md
+
+## Now (last updated: YYYY-MM-DD)
+- Branch: `branch-name`
+- Working on: [one sentence — what is being touched RIGHT NOW]
+
+## Next (top 3, ordered by priority)
+1. ...
+2. ...
+3. ...
+
+## Blocked / Known issues
+- ...
+
+## Recently shipped (last ~7 days, older entries move to docs/changelog.md)
+- YYYY-MM-DD — short description
+```
+
+If a section has nothing, write `- (none)`. Do not delete the section header.
+
+### Session-close ritual (MANDATORY, every session that touched code)
+
+Before ending any session that produced code changes, the agent MUST perform these steps in order. No exceptions.
+
+1. **Move stale entries out of `CURRENT.md`** — anything in `Recently shipped` older than ~7 days, or anything in `Now` that is now done, gets cut and pasted into `docs/changelog.md` under a new dated heading (`## YYYY-MM-DD — branch-or-feature-name`).
+2. **Update `## Now`** — bump the date, rewrite the one-sentence "Working on" to reflect the next thing.
+3. **Update `## Next`** — reorder, remove what was just done, add what surfaced during this session.
+4. **Update `## Blocked / Known issues`** — add anything new, remove anything resolved.
+5. **Update `## Recently shipped`** — prepend today's date with a one-line summary of what shipped this session.
+6. **If an architectural decision was made** — add an ADR to `ARCHITECTURE.md`. Do NOT log architectural decisions in `CURRENT.md` or `docs/changelog.md`.
+7. **Verify `CURRENT.md` is still ≤ ~80 lines.** If it grew past that, more entries need to be moved to `docs/changelog.md`.
+
+This is non-negotiable. Skipping it means the next session starts blind. The user does not need to ask for it — the agent does it automatically as the final step of any session that produced changes.
+
 ## Key Invariants
 
 - **Never compute points outside `backend/src/services/scoring.ts`**

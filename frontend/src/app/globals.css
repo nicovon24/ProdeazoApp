@@ -72,4 +72,120 @@ html {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* ── Sidebar nav active indicator ── */
+  .nav-link-active-indicator::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 60%;
+    border-radius: 0 3px 3px 0;
+    background-color: var(--color-primary, #AFE805);
+  }
+
+  /* ── Header dropdown animation ── */
+  .dropdown-in {
+    animation: dropdownIn 0.15s ease;
+  }
+
+  @keyframes dropdownIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Mobile sidebar fade-in overlay ── */
+  .fade-in-overlay {
+    animation: fadeInOverlay 0.2s ease;
+  }
+
+  @keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── Toast left accent bar (pseudo-element) ── */
+  .toast-bar-success::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--color-green-normal, #00ce17);
+  }
+
+  .toast-bar-error::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--color-tertiary-red, #d50204);
+  }
+
+  /* ── Filter tab active underline ── */
+  .filter-tab-active-line::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 8px;
+    right: 8px;
+    height: 2px;
+    background-color: var(--color-primary);
+  }
+
+  /* ── Leagues tab active underline ── */
+  .tab-btn-active-line::after {
+    content: "";
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--color-primary);
+  }
+
+  /* ── Spinner animation ── */
+  .spin-animation {
+    animation: spinAnim 0.9s linear infinite;
+  }
+
+  @keyframes spinAnim {
+    to { transform: rotate(360deg); }
+  }
+}
+
+/* ── Main content layout — natural body scroll on all breakpoints ── */
+
+.main-content {
+  min-height: 100svh;
+}
+
+/* Desktop (≥1024px): full sidebar offset */
+@media (min-width: 1024px) {
+  .main-content {
+    margin-left: 220px;
+  }
+}
+
+/* Tablet (768–1023px): narrow icon-only sidebar */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .main-content {
+    margin-left: 64px;
+  }
+}
+
+/* Mobile (<768px): drawer sidebar, no offset */
+@media (max-width: 767px) {
+  .main-content {
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

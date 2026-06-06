@@ -32,6 +32,8 @@ export async function me(req: Request, res: Response) {
     totalPoints: stats.totalPoints,
     scoredPredictions: stats.scoredPredictions,
     correctPredictions: stats.correctPredictions,
+    exactPredictions: stats.exactPredictions,
+    partialPredictions: stats.partialPredictions,
     precision: stats.precision,
     bestStreak,
   })

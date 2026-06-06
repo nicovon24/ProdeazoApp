@@ -1,81 +1,37 @@
-# CURRENT.md — Project State
+# CURRENT.md
 
-> This file is the first document any new session should read. It reflects the real project state today. Updated at the end of each session.
-
----
-
-## Last Session (2026-05-27)
-
-### Features shipped
-
-#### Mini-Leagues — Invite link flow (fix + enhancement)
-- **Bug fixed:** invite link was generating `/join/${token}` (path param) but the `/join` page read `?token=` (query param) → 404. Fixed to `/join?token=${token}`.
-- **Smart join modal:** accepts full URL, raw token, or short code (8 chars). Auto-detects type and calls `joinByToken` or `joinByCode`. Specific error messages for 409 (already member) and 404 (invalid/expired).
-- **Docs:** `docs/rules/api.md` updated with full mini-leagues endpoint table and invite flow contract.
-
-#### Rankings — Real data + UX improvements
-- **Real chart data:** new endpoint `GET /api/leaderboard/me/history` — groups predictions by day (join with fixtures), returns cumulative points. Frontend consumes and filters by tab (Weekly/Monthly/Full Tournament). Chart always starts at 0.
-- **Tie-aware ranking:** table no longer uses `index + 1`. Now computes shared rank: if 3 people tie at position 2, all show "2".
-- **Tab bug fixed:** "Todo el Torneo" was looking for key `'Torneo'` which never matched → fixed to `'Todo el Torneo'`.
-- **Empty state:** if no scored predictions in the period, shows message instead of empty chart.
-
-#### Home — Team name alignment
-- Team names in all 3 panels (Pending, Upcoming, Recent Results) now truncate with `...` instead of breaking layout.
-- CSS: `min-width: 0` on flex containers, `.teamName` with `text-overflow: ellipsis`, `.vs` with `flex-shrink: 0`.
-
-#### Forgot Password — Full flow
-- **Backend:** `password_reset_tokens` table in DB (CUID2 token, expires 1 hour, single-use), `email.service.ts` with nodemailer Gmail SMTP, two public endpoints:
-  - `POST /api/auth/forgot-password` — always 200, does not reveal if email exists
-  - `POST /api/auth/reset-password` — validates token, bcrypt hash, marks used
-- **Google users:** if a Google-only user never had a password, they can set one for the first time via this flow. Email subject changes to "Set up your password".
-- **Frontend:** pages `/forgot-password` and `/reset-password`, "Forgot your password?" link in login.
-- **SMTP credentials:** `SMTP_USER=prodeazoapp@gmail.com`, `SMTP_PASS` set in `.env`.
-
-#### Docker — Fixes
-- Port `5432` was occupied by local Supabase → `docker-compose.yml` changed to `5433:5432`.
-- `password_reset_tokens` table created manually in container DB (migrate service used cached image).
-- Migrate command improved: `echo 'yes' | npx drizzle-kit push` to avoid interactive TTY prompts in CI/Docker.
-
-#### Database — Cleanup
-- Removed **Premier League 2025/26** and **Brasileirão Serie A 2026** tournaments, their fixtures (784 total), and 61 orphan teams.
-- Remaining tournaments: **FIFA World Cup 2026** (104 fixtures) and **UEFA Champions League 2025/26** (281 fixtures).
+> Live project state. First document any new session should read.
+> Structure is mandated by `CLAUDE.md` → Context Management Protocol. Do not deviate.
+> Older entries live in `docs/changelog.md`. Architectural decisions live in `ARCHITECTURE.md`.
 
 ---
 
-## In Progress
+## Now (last updated: 2026-06-05)
 
-- Nothing actively in progress.
-
-## Blockers / Open Questions
-
-- None.
-
-## Feature Status
-
-| Feature | Status |
-|---------|--------|
-| Invite link flow | ✅ Done |
-| Rankings with real data | ✅ Done |
-| Home — team alignment | ✅ Done |
-| Forgot password (backend) | ✅ Done |
-| Forgot password (frontend) | ✅ Done |
-| SMTP Gmail | ✅ Configured (verify delivery) |
-| Docker fix | ✅ Done |
-| DB cleanup (PL + Brasileirao) | ✅ Done |
-| Code review fixes (CR/WR/IN) | ✅ Done (2026-05-27) |
-| Rankings: all users with 0pts default | ✅ Done (2026-05-27) |
-| Rankings: search input functional | ✅ Done (2026-05-27) |
-| Invite link expired vs used message | ✅ Done (2026-05-27) |
-
-## Known Issues
-
-- `leaveLeague()` in `frontend/src/api/mini-leagues.ts` calls `/members/me` but backend exposes `DELETE /:id/leave` → needs fix.
-
-## Next Tasks
-
-- Verify password reset email delivery with current credentials.
-- Connect fixture page to real data (pending from earlier sessions).
+- Branch: `feat/functionality-3`
+- Working on: Fix `leaveLeague()` endpoint mismatch — frontend calls `/members/me` but backend exposes `DELETE /:id/leave`.
 
 ---
 
-*Updated: 2026-05-27 — code review fixes (14 issues), rankings shows all users with 0pts, search wired, expired invite link shows clear message*
+## Next (top 3, ordered by priority)
+
+1. Fix `leaveLeague()` endpoint mismatch — frontend calls `/members/me` but backend exposes `DELETE /:id/leave`.
+2. Wire fixture page to real tournament data end-to-end (group standings from API, not client-only).
+3. Verify password reset email delivery (SMTP Gmail credentials).
+
+Then: merge `feat/functionality-3` → `master` once confirmed stable.
+
+---
+
+## Blocked / Known issues
+
+- `leaveLeague()` endpoint mismatch (see Next #1) — currently breaks "leave league" UX.
+- SMTP Gmail delivery not yet verified end-to-end in production.
+
+---
+
+## Recently shipped (last ~7 days)
+
+- 2026-06-05 — StatsCardSkeleton responsive fix: changed from inline `grid-template-columns: repeat(3, 1fr)` to Tailwind `grid-cols-1 sm:grid-cols-3` so cards stack vertically on mobile.
+- 2026-06-05 — Bracket placeholder handling: added `isBracketPlaceholder` / `fixtureHasBracketSlot` utility to detect knockout matches with undetermined teams (1C, 2F, W74, etc.). Home page filters them from pending panels and count. Predictions page shows them darkened with "A confirmar" label, locked to prevent predictions, and excluded from pending/saved counts. Fixture page unaffected.
+- 2026-06-04 — Rankings page: error handling (`.catch()` guards), 2-col layout (top 30 sidebar + chart + "Los mejores del mes" placeholder), removed pre-tournament empty state.

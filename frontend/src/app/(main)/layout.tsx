@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TournamentInitializer } from "@/components/TournamentInitializer";
+import { pageTransition } from "@/lib/animations";
 
 export default function MainLayout({
   children,
@@ -13,6 +15,7 @@ export default function MainLayout({
 }) {
   const { user, loading, fetchMe } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
@@ -44,20 +47,20 @@ export default function MainLayout({
   if (!user) return null;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <>
       <TournamentInitializer />
       <Sidebar />
-      <div
-        style={{
-          marginLeft: 220,
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "100vh",
-        }}
-      >
-        {children}
+      <div className="main-content" style={{ display: "flex", flexDirection: "column" }}>
+        <motion.div
+          key={pathname}
+          variants={pageTransition}
+          initial="hidden"
+          animate="visible"
+          style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
+        >
+          {children}
+        </motion.div>
       </div>
-    </div>
+    </>
   );
 }
