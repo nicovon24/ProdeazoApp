@@ -11,6 +11,7 @@ import type {
   ProviderTeam,
 } from './types'
 import { applyFlatParticipantLabel, preferCountryOverBracketPlaceholder } from './participant-names'
+import { translateCountryName } from './i18n/countries'
 
 type BzzoiroProviderOptions = {
   apiKey: string
@@ -149,7 +150,7 @@ function normalizeLeague(value: unknown): ProviderLeague | null {
   return {
     id,
     name,
-    country: asString(row.country),
+    country: translateCountryName(asString(row.country)),
     logoUrl: getBzzoiroImageUrl('league', id),
     currentSeasonId: asString(currentSeason.id),
     raw: value,
@@ -165,7 +166,7 @@ function normalizeTeam(value: unknown): ProviderTeam | null {
     id,
     name,
     shortName: asString(row.short_name ?? row.shortName ?? row.code),
-    country: asString(row.country ?? row.country_name ?? row.nation ?? row.nationality),
+    country: translateCountryName(asString(row.country ?? row.country_name ?? row.nation ?? row.nationality)),
     logoUrl: asString(row.logo) ?? getBzzoiroImageUrl('team', id),
     raw: value,
   }
@@ -206,7 +207,7 @@ function normalizeEventSideParticipant(
     obj.country ?? obj.country_name ?? obj.nation ?? obj.nationality
   )
   if (countryFromObj?.trim() && !resolved.country?.trim()) {
-    resolved = { ...resolved, country: countryFromObj.trim() }
+    resolved = { ...resolved, country: translateCountryName(countryFromObj.trim()) }
   }
   return preferCountryOverBracketPlaceholder(resolved)
 }

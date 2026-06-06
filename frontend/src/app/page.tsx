@@ -97,15 +97,15 @@ export default function Landing() {
             variants={containerVariants}
             initial="hidden"
             animate="visible"
-            className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-3 py-5 sm:gap-8 sm:px-6 sm:py-7 md:gap-10 md:py-8 lg:h-full lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center lg:gap-5 lg:px-6 lg:py-5 xl:gap-7"
+            className="mx-auto flex w-full max-w-7xl flex-1 flex-col justify-center gap-6 px-3 py-5 sm:gap-8 sm:px-6 sm:py-7 md:gap-10 md:py-8 lg:h-full lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center lg:gap-5 lg:px-6 lg:py-5 xl:gap-7"
           >
-            <div className="relative z-10 max-w-xl">
-              <motion.p variants={itemVariants} className="font-display text-xs font-bold uppercase tracking-wider text-green-normal sm:text-sm md:text-base">
+            <div className="relative z-10 w-full sm:max-w-xl">
+              <motion.p variants={itemVariants} className="text-center font-display text-xs font-bold uppercase tracking-wider text-green-normal sm:text-left sm:text-sm md:text-base">
                 Faltan
               </motion.p>
               <motion.h1 
                 variants={itemVariants} 
-                className="mt-2 font-display text-[clamp(2.25rem,9vw,4.5rem)] font-bold uppercase leading-[0.92] text-foreground sm:mt-3 sm:text-6xl md:text-7xl lg:text-[min(7rem,10vw)] xl:text-[min(8rem,9vw)]"
+                className="mt-2 text-center font-display text-[clamp(2.25rem,9vw,4.5rem)] font-bold uppercase leading-[0.92] text-foreground sm:text-left sm:mt-3 sm:text-6xl md:text-7xl lg:text-[min(7rem,10vw)] xl:text-[min(8rem,9vw)]"
               >
                 <span className="block tabular-nums tracking-[-0.06em]">
                   {mounted ? DAYS_TO_KICKOFF : "---"}
@@ -114,10 +114,10 @@ export default function Landing() {
                   días para el Mundial
                 </span>
               </motion.h1>
-              <motion.p variants={itemVariants} className="mt-4 max-w-md text-sm leading-relaxed text-foreground/70 text-pretty sm:mt-5 sm:text-base md:text-lg">
+              <motion.p variants={itemVariants} className="mt-4 max-w-md text-center text-sm leading-relaxed text-foreground/70 text-pretty sm:mt-5 sm:text-left sm:text-base md:text-lg">
                 Hacé tu prode, competí con tus amigos y demostrá quién sabe más de fútbol.
               </motion.p>
-              <motion.div variants={itemVariants} className="mt-5 flex flex-wrap items-center gap-3 sm:mt-6">
+              <motion.div variants={itemVariants} className="mt-5 flex flex-wrap items-center justify-center gap-3 sm:mt-6 sm:justify-start">
                 <Link
                   href={user ? '/home' : '/register'}
                   className="group inline-flex min-h-11 w-full cursor-pointer select-none items-center justify-center gap-2 rounded-full bg-primary px-6 font-display text-sm font-bold tracking-tight text-black transition-all duration-200 hover:brightness-95 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(175,232,5,0.4)] active:scale-[0.98] active:translate-y-0.5 sm:min-h-12 sm:w-auto sm:px-7 sm:text-base md:min-h-14 md:px-8 md:text-lg"

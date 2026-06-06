@@ -81,21 +81,22 @@ function mapBase(row: {
 }
 
 export async function getHomePanels(userId: string) {
-  const [recentRows, upcomingRows, pendingRows] = await Promise.all([
+  const [recentRows, upcomingRows, pendingRows, pendingCount] = await Promise.all([
     panelsModel.findUserRecentFinishedPredictions(userId, 5),
-    panelsModel.findUserUpcomingPredictedFixtures(userId),
-    panelsModel.findUserPendingFixtures(userId, 5),
+    panelsModel.findUserUpcomingPredictedFixtures(userId, 10),
+    panelsModel.findUserPendingFixtures(userId, 10),
+    panelsModel.countUserPendingFixtures(userId),
   ])
 
   const recentResults: RecentResultMatch[] = recentRows.map((row) => ({
     ...mapBase(row),
     prediction: {
-      homeGoals: row.homeGoals,
-      awayGoals: row.awayGoals,
+      homeGoals: row.homeGoals!,
+      awayGoals: row.awayGoals!,
       points: row.points,
       resultTone: classifyPredictionTone(
-        row.homeGoals,
-        row.awayGoals,
+        row.homeGoals!,
+        row.awayGoals!,
         row.homeScore,
         row.awayScore,
         row.points
@@ -110,5 +111,6 @@ export async function getHomePanels(userId: string) {
     recentResults,
     upcomingWithPrediction,
     pendingPredictions,
+    pendingPredictionsTotal: pendingCount,
   }
 }

@@ -27,6 +27,8 @@ export async function getUserScoredPredictionStats(userId: string, tournamentId?
       totalPoints: sum(predictions.points).mapWith(Number),
       scoredPredictions: count(),
       correctPredictions: sql<number>`count(*) filter (where ${predictions.points} > 0)`.mapWith(Number),
+      exactPredictions: sql<number>`count(*) filter (where ${predictions.points} = 5)`.mapWith(Number),
+      partialPredictions: sql<number>`count(*) filter (where ${predictions.points} > 0 and ${predictions.points} < 5)`.mapWith(Number),
     })
     .from(predictions)
     .innerJoin(fixtures, eq(predictions.fixtureId, fixtures.id))
@@ -35,10 +37,19 @@ export async function getUserScoredPredictionStats(userId: string, tournamentId?
   const totalPoints = row?.totalPoints ?? 0
   const scoredPredictions = Number(row?.scoredPredictions ?? 0)
   const correctPredictions = Number(row?.correctPredictions ?? 0)
+  const exactPredictions = Number(row?.exactPredictions ?? 0)
+  const partialPredictions = Number(row?.partialPredictions ?? 0)
   const precision =
     scoredPredictions > 0 ? Math.round((correctPredictions / scoredPredictions) * 100) : 0
 
-  return { totalPoints, scoredPredictions, correctPredictions, precision }
+  return {
+    totalPoints,
+    scoredPredictions,
+    correctPredictions,
+    exactPredictions,
+    partialPredictions,
+    precision,
+  }
 }
 
 export async function getUserBestStreak(userId: string, tournamentId?: string): Promise<number> {

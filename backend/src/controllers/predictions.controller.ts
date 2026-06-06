@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { predictionsOpen } from '../constants/fixture-status'
 import * as predictionModel from '../models/prediction.model'
 import * as fixtureModel from '../models/fixture.model'
+import { isLikelyBracketPlaceholder } from '../providers/participant-names'
 import { paginate } from '../utils/paginate'
 import { err } from '../utils/apiError'
 import { resolveTournament } from '../utils/resolveTournament'
@@ -46,6 +47,11 @@ export async function createOrUpdate(req: Request, res: Response) {
   }
   if (!predictionsOpen(fixture.status)) {
     return res.status(409).json(err('CONFLICT', 'Predictions are locked once the match has started'))
+  }
+
+  const [teamNames] = await fixtureModel.findFixtureTeamNames(fixtureId)
+  if (teamNames && (isLikelyBracketPlaceholder(teamNames.homeName) || isLikelyBracketPlaceholder(teamNames.awayName))) {
+    return res.status(409).json(err('CONFLICT', 'Teams not yet confirmed for this fixture'))
   }
 
   const [result] = await predictionModel.upsertPrediction(userId, fixtureId, homeGoals, awayGoals)

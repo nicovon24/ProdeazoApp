@@ -47,7 +47,7 @@ export function AuthShell({ title, description, children, footer }: AuthShellPro
         transition={{ duration: 0.6, ease: "easeOut" }}
         className="relative z-10 flex w-full max-w-3xl flex-col gap-8 rounded-[20px] border border-white/10 bg-black/80 p-5 shadow-[0_0_40px_rgba(0,0,0,0.45)] backdrop-blur sm:flex-row sm:p-7 lg:gap-12"
       >
-        <div className="flex shrink-0 flex-col items-center justify-center gap-3 lg:gap-4">
+        <div className="hidden shrink-0 flex-col items-center justify-center gap-3 sm:flex lg:gap-4">
           <motion.span 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}

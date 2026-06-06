@@ -8,6 +8,8 @@ export interface DashboardMe {
   totalPoints: number
   scoredPredictions: number
   correctPredictions: number
+  exactPredictions: number
+  partialPredictions: number
   precision: number
   bestStreak: number
 }
@@ -45,10 +47,18 @@ export interface DashboardRecentResult extends DashboardPanelMatch {
   }
 }
 
+export interface DashboardUpcomingMatch extends DashboardPanelMatch {
+  prediction: {
+    homeGoals: number
+    awayGoals: number
+  } | null
+}
+
 export interface DashboardPanels {
   recentResults: DashboardRecentResult[]
-  upcomingWithPrediction: DashboardPanelMatch[]
+  upcomingWithPrediction: DashboardUpcomingMatch[]
   pendingPredictions: DashboardPanelMatch[]
+  pendingPredictionsTotal: number
 }
 
 export function fetchDashboardPanels(): Promise<DashboardPanels> {

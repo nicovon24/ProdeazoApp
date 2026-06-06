@@ -23,7 +23,7 @@ export function Navbar({ variant = 'landing', position = 'relative' }: NavbarPro
 
   return (
     <header className={`${position} ${position === 'absolute' ? 'top-0 left-0 right-0' : ''} z-50 w-full shrink-0 border-b border-white/10 bg-transparent`}>
-      <div className={`mx-auto flex h-16 w-full items-center ${isAuth ? '' : 'justify-between'} gap-2 px-3 sm:h-[4.5rem] sm:gap-4 sm:px-6`}>
+      <div className={`mx-auto flex h-16 w-full items-center ${isAuth ? 'justify-center sm:justify-start' : 'justify-between'} gap-2 px-3 sm:h-[4.5rem] sm:gap-4 sm:px-6`}>
         <Logo simplified={variant === 'landing'} />
 
         {!isAuth && (
@@ -43,7 +43,7 @@ export function Navbar({ variant = 'landing', position = 'relative' }: NavbarPro
               {user ? (
                 <button
                   onClick={() => router.push('/home')}
-                  className="rounded-full bg-primary px-2.5 py-2 font-display text-[11px] font-bold tracking-tight text-black transition-all duration-200 hover:brightness-95 hover:scale-105 active:scale-95 active:translate-y-0.5 sm:px-4 sm:text-sm select-none"
+                  className="rounded-full bg-primary px-2.5 py-2 font-display text-[11px] font-bold tracking-tight text-black transition-all duration-200 hover:brightness-95 hover:scale-105 active:scale-95 active:translate-y-0.5 sm:px-4 sm:text-sm select-none cursor-pointer"
                 >
                   Mi prode
                 </button>
